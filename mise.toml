@@ -1,0 +1,5 @@
+[tasks.build]
+run = "cargo build --release"
+
+[tasks.make-cleint]
+run = "cargo build --release --no-default-features"

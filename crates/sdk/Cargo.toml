@@ -1,0 +1,7 @@
+[package]
+name = "issuecraft-sdk"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+thiserror.workspace = true
