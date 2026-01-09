@@ -10,7 +10,12 @@ postgres = ["sqlx/postgres"]
 mysql = ["sqlx/mysql"]
 
 [dependencies]
-sqlx = { version = "0.8.6", features = ["runtime-tokio", "sqlite", "uuid", "chrono"] }
+sqlx = { version = "0.8.6", features = [
+    "runtime-tokio",
+    "sqlite",
+    "uuid",
+    "chrono",
+] }
 clap = { version = "4.5.54", features = ["derive"] }
 tokio = { version = "1.49.0", features = ["full"] }
 anyhow = "1.0.100"
@@ -25,20 +30,15 @@ chrono.workspace = true
 issuecraft-core.workspace = true
 issuecraft-sdk.workspace = true
 issuecraft-common.workspace = true
+issuecraft-ql.workspace = true
+
 redb = "3.1.0"
 serde_json = "1.0.149"
-gluesql = "0.18.0"
 
 [workspace]
 resolver = "3"
-members = [
-    "crates/core",
-    "crates/sdk",
-    "crates/common",
-]
-default-members = [
-    ".",
-]
+members = ["crates/core", "crates/sdk", "crates/common", "crates/iql-parser"]
+default-members = ["."]
 
 [workspace.package]
 version = "0.1.0"
@@ -49,8 +49,9 @@ serde = { version = "1.0.228", features = ["derive"] }
 thiserror = "2.0.17"
 facet = "0.42.0"
 facet-pretty = "0.42.0"
-chrono = {version = "0.4.42", features = ["serde"] }
+chrono = { version = "0.4.42", features = ["serde"] }
 async-trait = "0.1.89"
 issuecraft-core = { version = "0.1.0", path = "crates/core" }
 issuecraft-sdk = { version = "0.1.0", path = "crates/sdk" }
 issuecraft-common = { version = "0.1.0", path = "crates/common" }
+issuecraft-ql = { version = "0.1.0", path = "crates/iql-parser" }

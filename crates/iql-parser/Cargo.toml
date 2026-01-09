@@ -1,0 +1,8 @@
+[package]
+name = "issuecraft-ql"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+logos = "0.16"
+thiserror.workspace = true

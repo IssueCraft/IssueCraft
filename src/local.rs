@@ -118,12 +118,150 @@ fn to_client_error<E: Display>(err: E) -> ClientError {
 }
 
 #[async_trait]
-impl Store for Database {
-    async fn fetch_schema(&self, table_name: &str) -> Result<Option<Schema>> {}
-
-    async fn fetch_all_schemas(&self) -> Result<Vec<Schema>> {}
-
-    async fn fetch_data(&self, table_name: &str, key: &Key) -> Result<Option<DataRow>> {}
-
-    async fn scan_data(&self, table_name: &str) -> Result<RowIter> {}
+impl Client for Database {
+    async fn init(&mut self) {}
+    async fn login(&mut self, login: LoginInfo) -> Result<(), ClientError> {
+        Ok(())
+    }
+    async fn logout(&mut self) -> Result<(), ClientError> {
+        Ok(())
+    }
+    async fn add_project(
+        &mut self,
+        name: &str,
+        owner: &UserId,
+        display_name: Option<String>,
+    ) -> Result<(), ClientError> {
+        let write_txn = self.db.begin_write().map_err(to_client_error)?;
+        {
+            let mut table = write_txn
+                .open_table(TABLE_PROJECTS)
+                .map_err(to_client_error)?;
+            table
+                .insert(
+                    name,
+                    &serde_json::to_string(&ProjectInfo {
+                        display: display_name,
+                        owner: owner.clone(),
+                    })
+                    .unwrap(),
+                )
+                .map_err(to_client_error)?;
+        }
+        write_txn.commit().map_err(to_client_error)?;
+        Ok(())
+    }
+    async fn get_projects(&self) -> Result<Vec<ProjectId>, ClientError> {
+        self.get_keys_as::<ProjectId>(TABLE_PROJECTS)
+    }
+    async fn get_project_info(&self, project_id: &ProjectId) -> Result<ProjectInfo, ClientError> {
+        self.get(TABLE_PROJECTS, project_id.0.as_str())
+    }
+    async fn add_user(
+        &mut self,
+        name: &str,
+        email: &str,
+        display_name: Option<String>,
+    ) -> Result<(), ClientError> {
+        let write_txn = self.db.begin_write().map_err(to_client_error)?;
+        {
+            let mut table = write_txn.open_table(TABLE_USERS).map_err(to_client_error)?;
+            table
+                .insert(
+                    name,
+                    &serde_json::to_string(&UserInfo {
+                        display: display_name,
+                        email: email.to_string(),
+                    })
+                    .unwrap(),
+                )
+                .map_err(to_client_error)?;
+        }
+        write_txn.commit().map_err(to_client_error)?;
+        Ok(())
+    }
+    async fn get_user(&self) -> Result<UserId, ClientError> {
+        Ok(UserId("local".to_string()))
+    }
+    async fn get_user_info(&self, user: &UserId) -> Result<UserInfo, ClientError> {
+        Err(ClientError::NotSupported)
+    }
+    async fn get_issues(&self) -> Result<Vec<IssueId>, ClientError> {
+        self.get_keys_as::<IssueId>(TABLE_ISSUES)
+    }
+    async fn get_issue_info(&self, issue: &IssueId) -> Result<UserInfo, ClientError> {
+        self.get(TABLE_ISSUES, issue.0.as_str())
+    }
+    async fn add_issue(
+        &mut self,
+        title: &str,
+        description: &str,
+        project: &ProjectId,
+    ) -> Result<(), ClientError> {
+        let read_txn = self.db.begin_read().map_err(to_client_error)?;
+        let project_name = {
+            let table = read_txn
+                .open_table(TABLE_PROJECTS)
+                .map_err(to_client_error)?;
+            table
+                .get(project.0.as_str())
+                .map_err(to_client_error)?
+                .ok_or_else(|| ClientError::ClientSpecific(format!("Project not found")))?
+                .value()
+        };
+        let write_txn = self.db.begin_write().map_err(to_client_error)?;
+        {
+            let mut table = write_txn
+                .open_table(TABLE_ISSUES)
+                .map_err(to_client_error)?;
+            let id = format!("{}-{}", project_name, table.len().unwrap_or_default());
+            table
+                .insert(
+                    id.as_str(),
+                    &serde_json::to_string(&IssueInfo {
+                        description: description.to_string(),
+                        title: title.to_string(),
+                        status: IssueStatus::Open,
+                        project: project.clone(),
+                    })
+                    .unwrap(),
+                )
+                .map_err(to_client_error)?;
+        }
+        write_txn.commit().map_err(to_client_error)?;
+        Ok(())
+    }
+    async fn update_issue(&mut self, issue: &IssueId, content: &str) -> Result<(), ClientError> {
+        Err(ClientError::NotImplemented)
+    }
+    async fn change_issue_status(
+        &mut self,
+        issue: &IssueId,
+        status: IssueStatus,
+    ) -> Result<(), ClientError> {
+        Err(ClientError::NotImplemented)
+    }
+    async fn get_comments(&self, issue: &IssueId) -> Result<Vec<CommentId>, ClientError> {
+        Err(ClientError::NotImplemented)
+    }
+    async fn get_comment_info(&self, comment: &CommentId) -> Result<CommentInfo, ClientError> {
+        Err(ClientError::NotImplemented)
+    }
+    async fn add_comment(
+        &mut self,
+        issue: &IssueId,
+        content: &str,
+    ) -> Result<CommentId, ClientError> {
+        Err(ClientError::NotImplemented)
+    }
+    async fn update_comment(
+        &mut self,
+        comment: &CommentId,
+        content: &str,
+    ) -> Result<(), ClientError> {
+        Err(ClientError::NotImplemented)
+    }
+    async fn delete_comment(&mut self, comment: &CommentId) -> Result<(), ClientError> {
+        Err(ClientError::NotImplemented)
+    }
 }

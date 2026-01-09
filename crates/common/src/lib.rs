@@ -49,8 +49,8 @@ pub struct IssueId(pub String);
 pub struct IssueInfo {
     pub title: String,
     pub description: String,
-    pub project: ProjectId,
     pub status: IssueStatus,
+    pub project: ProjectId,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

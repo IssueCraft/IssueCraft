@@ -7,5 +7,5 @@ use clap::{Parser, Subcommand};
 pub struct Cli {
     #[arg(short, long, alias = "cfg")]
     pub config: Option<PathBuf>,
-    pub command: Vec<String>,
+    pub query: Vec<String>,
 }

@@ -3,6 +3,7 @@
 use std::path::Path;
 
 use issuecraft_common::{Client, ProjectId, UserId};
+use issuecraft_ql::parse;
 
 use clap::Parser;
 
@@ -14,7 +15,7 @@ mod local;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let Cli { config, command } = Cli::parse();
+    let Cli { config, query } = Cli::parse();
 
     let default_config_path = Path::new(".ic.toml");
 
@@ -30,10 +31,17 @@ async fn main() -> anyhow::Result<()> {
         }
     };
 
-    let mut db = local::Database::new(&local::DatabaseType::File(
-        config.connection_string.clone().into(),
-    ))?;
-    println!("Command: {command:?}");
+    let mut db = local::Database::new(&local::DatabaseType::File(config.db_path.clone().into()))?;
+    db.execute(&query.join(" ")?).await?;
+    match parse(&query.join(" "))? {
+        issuecraft_ql::Statement::Create(create_statement) => todo!(),
+        issuecraft_ql::Statement::Select(select_statement) => todo!(),
+        issuecraft_ql::Statement::Update(update_statement) => todo!(),
+        issuecraft_ql::Statement::Delete(delete_statement) => todo!(),
+        issuecraft_ql::Statement::Assign(assign_statement) => todo!(),
+        issuecraft_ql::Statement::Close(close_statement) => todo!(),
+        issuecraft_ql::Statement::Comment(comment_statement) => todo!(),
+    }
 
     println!("Config: {config:?}");
 
