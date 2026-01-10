@@ -1,8 +1,8 @@
-use serde::{Deserialize, Serialize};
+use facet::Facet;
 
 const DEFAULT_DB_PATH: &str = ".ic.db";
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Facet)]
 pub struct Config {
     pub db_path: String,
 }

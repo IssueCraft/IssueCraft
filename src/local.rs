@@ -1,18 +1,21 @@
 use std::{fmt::Display, path::PathBuf};
 
 use async_trait::async_trait;
+use facet::{Facet, Shape, shape_of};
+use facet_value::{Value, from_value};
 use issuecraft_common::{
     Client, ClientError, CommentId, CommentInfo, IssueId, IssueInfo, IssueStatus, LoginInfo,
     ProjectId, ProjectInfo, UserId, UserInfo,
 };
+use issuecraft_ql::{SelectStatement, parse_query};
 use redb::{
-    Key, ReadableDatabase, ReadableTable, ReadableTableMetadata, TableDefinition, TransactionError,
-    Value, backends::InMemoryBackend,
+    Key, ReadableDatabase, ReadableTable, ReadableTableMetadata, TableDefinition, TableHandle,
+    TransactionError, backends::InMemoryBackend,
 };
-use serde::de::DeserializeOwned;
+
+const REDB_DEFAULT_USER: &str = "redb_local";
 
 const TABLE_META: TableDefinition<&str, String> = TableDefinition::new("meta");
-const TABLE_USERS: TableDefinition<&str, String> = TableDefinition::new("users");
 const TABLE_PROJECTS: TableDefinition<&str, String> = TableDefinition::new("projects");
 const TABLE_ISSUES: TableDefinition<&str, String> = TableDefinition::new("issues");
 const TABLE_COMMENTS: TableDefinition<&str, String> = TableDefinition::new("comments");
@@ -68,7 +71,89 @@ impl Database {
         }
     }
 
-    fn get<T: DeserializeOwned>(
+    fn create<V: Facet<'static>>(
+        &mut self,
+        table_definition: TableDefinition<'_, &str, String>,
+        id: &str,
+        info: &V,
+    ) -> Result<(), ClientError> {
+        let write_txn = self.db.begin_write().map_err(to_client_error)?;
+        {
+            let mut table = write_txn
+                .open_table(table_definition)
+                .map_err(to_client_error)?;
+            let project_info_str = facet_json::to_string(info).map_err(to_client_error)?;
+            table
+                .insert(id, &project_info_str)
+                .map_err(to_client_error)?;
+        }
+        write_txn.commit().map_err(to_client_error)
+    }
+
+    fn get_all<K: IdFromStr, V: Facet<'static>>(
+        &self,
+        table_definition: TableDefinition<'_, &str, String>,
+        SelectStatement {
+            columns,
+            from,
+            filter,
+            order_by,
+            limit,
+            offset,
+        }: &SelectStatement,
+    ) -> Result<Vec<(K, V)>, ClientError> {
+        let read_txn = self.db.begin_read().map_err(to_client_error)?;
+        {
+            if !read_txn
+                .list_tables()
+                .unwrap()
+                .any(|table| table.name() == table_definition.name())
+            {
+                return Ok(vec![]);
+            }
+            let mut table = read_txn
+                .open_table(table_definition)
+                .map_err(to_client_error)?;
+            let mut values = table
+                .iter()
+                .map_err(to_client_error)?
+                .map(|entry| {
+                    entry.map_err(to_client_error).map(|entry| {
+                        facet_json::from_str::<Value>(&entry.1.value())
+                            .map(|v| (K::from_str(entry.0.value()), v))
+                    })
+                })
+                .skip(offset.unwrap_or(0) as usize)
+                .take(limit.unwrap_or(u32::MAX) as usize)
+                .collect::<Result<Result<Vec<_>, _>, _>>()??;
+            if let Some(order_by) = order_by {
+                values.sort_by(|a, b| {
+                    let o1 = a.1.as_object().unwrap();
+                    let o2 = b.1.as_object().unwrap();
+                    match (
+                        o1.get(&order_by.field.clone()),
+                        o2.get(&order_by.field.to_owned()),
+                    ) {
+                        (None, None) => return std::cmp::Ordering::Equal,
+                        (Some(_), None) => return std::cmp::Ordering::Greater,
+                        (None, Some(_)) => return std::cmp::Ordering::Less,
+                        (Some(v1), Some(v2)) => v1.partial_cmp(v2).unwrap(),
+                    }
+                });
+            }
+
+            Ok(values
+                .into_iter()
+                .filter(|(k, v)| match filter {
+                    None => true,
+                    Some(filter_expr) => true,
+                })
+                .map(|(k, v)| from_value::<V>(v).map_err(to_client_error).map(|v| (k, v)))
+                .collect::<Result<Vec<_>, _>>()?)
+        }
+    }
+
+    fn get<T: Facet<'static>>(
         &self,
         table_definition: TableDefinition<'_, &str, String>,
         key: &str,
@@ -83,7 +168,7 @@ impl Database {
                 .map_err(to_client_error)?
                 .ok_or_else(|| ClientError::ClientSpecific(format!("Project not found")))?
                 .value();
-            serde_json::from_str(&info).map_err(|e| to_client_error(e))
+            facet_json::from_str(&info).map_err(|e| to_client_error(e))
         }
     }
 
@@ -113,155 +198,81 @@ impl Database {
     }
 }
 
+fn stringify<T: Facet<'static>>(value: &T) -> Result<String, ClientError> {
+    facet_json::to_string_pretty(value).map_err(to_client_error)
+}
+
 fn to_client_error<E: Display>(err: E) -> ClientError {
     ClientError::ClientSpecific(format!("{err}"))
 }
 
 #[async_trait]
 impl Client for Database {
-    async fn init(&mut self) {}
     async fn login(&mut self, login: LoginInfo) -> Result<(), ClientError> {
         Ok(())
     }
     async fn logout(&mut self) -> Result<(), ClientError> {
         Ok(())
     }
-    async fn add_project(
-        &mut self,
-        name: &str,
-        owner: &UserId,
-        display_name: Option<String>,
-    ) -> Result<(), ClientError> {
-        let write_txn = self.db.begin_write().map_err(to_client_error)?;
-        {
-            let mut table = write_txn
-                .open_table(TABLE_PROJECTS)
-                .map_err(to_client_error)?;
-            table
-                .insert(
+    async fn execute(&mut self, query: &str) -> Result<String, ClientError> {
+        match parse_query(query)? {
+            issuecraft_ql::Statement::Select(select_statement) => {
+                println!("Select Statement: {select_statement:#?}");
+                match select_statement.from {
+                    issuecraft_ql::EntityType::Users => {
+                        Ok("The redb backend only supports one user".to_string())
+                    }
+                    issuecraft_ql::EntityType::Projects => stringify(
+                        &self
+                            .get_all::<ProjectId, ProjectInfo>(TABLE_PROJECTS, &select_statement)?,
+                    ),
+                    issuecraft_ql::EntityType::Issues => stringify(
+                        &self.get_all::<IssueId, IssueInfo>(TABLE_ISSUES, &select_statement)?,
+                    ),
+                    issuecraft_ql::EntityType::Comments => stringify(
+                        &self
+                            .get_all::<ProjectId, ProjectInfo>(TABLE_PROJECTS, &select_statement)?,
+                    ),
+                }
+            }
+            issuecraft_ql::Statement::Create(create_statement) => match create_statement {
+                issuecraft_ql::CreateStatement::User {
+                    username,
+                    email,
                     name,
-                    &serde_json::to_string(&ProjectInfo {
-                        display: display_name,
-                        owner: owner.clone(),
-                    })
-                    .unwrap(),
-                )
-                .map_err(to_client_error)?;
-        }
-        write_txn.commit().map_err(to_client_error)?;
-        Ok(())
-    }
-    async fn get_projects(&self) -> Result<Vec<ProjectId>, ClientError> {
-        self.get_keys_as::<ProjectId>(TABLE_PROJECTS)
-    }
-    async fn get_project_info(&self, project_id: &ProjectId) -> Result<ProjectInfo, ClientError> {
-        self.get(TABLE_PROJECTS, project_id.0.as_str())
-    }
-    async fn add_user(
-        &mut self,
-        name: &str,
-        email: &str,
-        display_name: Option<String>,
-    ) -> Result<(), ClientError> {
-        let write_txn = self.db.begin_write().map_err(to_client_error)?;
-        {
-            let mut table = write_txn.open_table(TABLE_USERS).map_err(to_client_error)?;
-            table
-                .insert(
+                } => Err(ClientError::NotSupported),
+                issuecraft_ql::CreateStatement::Project {
+                    project_id,
                     name,
-                    &serde_json::to_string(&UserInfo {
-                        display: display_name,
-                        email: email.to_string(),
-                    })
-                    .unwrap(),
-                )
-                .map_err(to_client_error)?;
+                    description,
+                    owner,
+                } => {
+                    let project_info = ProjectInfo {
+                        owner: UserId(REDB_DEFAULT_USER.to_string()),
+                        display: name,
+                    };
+                    self.create(TABLE_PROJECTS, &project_id, &project_info)?;
+                    Ok("SUCCESS".to_string())
+                }
+                issuecraft_ql::CreateStatement::Issue {
+                    project,
+                    title,
+                    description,
+                    priority,
+                    assignee,
+                    labels,
+                } => todo!(),
+                issuecraft_ql::CreateStatement::Comment {
+                    issue_id,
+                    content,
+                    author,
+                } => todo!(),
+            },
+            issuecraft_ql::Statement::Update(update_statement) => todo!(),
+            issuecraft_ql::Statement::Delete(delete_statement) => todo!(),
+            issuecraft_ql::Statement::Assign(assign_statement) => todo!(),
+            issuecraft_ql::Statement::Close(close_statement) => todo!(),
+            issuecraft_ql::Statement::Comment(comment_statement) => todo!(),
         }
-        write_txn.commit().map_err(to_client_error)?;
-        Ok(())
-    }
-    async fn get_user(&self) -> Result<UserId, ClientError> {
-        Ok(UserId("local".to_string()))
-    }
-    async fn get_user_info(&self, user: &UserId) -> Result<UserInfo, ClientError> {
-        Err(ClientError::NotSupported)
-    }
-    async fn get_issues(&self) -> Result<Vec<IssueId>, ClientError> {
-        self.get_keys_as::<IssueId>(TABLE_ISSUES)
-    }
-    async fn get_issue_info(&self, issue: &IssueId) -> Result<UserInfo, ClientError> {
-        self.get(TABLE_ISSUES, issue.0.as_str())
-    }
-    async fn add_issue(
-        &mut self,
-        title: &str,
-        description: &str,
-        project: &ProjectId,
-    ) -> Result<(), ClientError> {
-        let read_txn = self.db.begin_read().map_err(to_client_error)?;
-        let project_name = {
-            let table = read_txn
-                .open_table(TABLE_PROJECTS)
-                .map_err(to_client_error)?;
-            table
-                .get(project.0.as_str())
-                .map_err(to_client_error)?
-                .ok_or_else(|| ClientError::ClientSpecific(format!("Project not found")))?
-                .value()
-        };
-        let write_txn = self.db.begin_write().map_err(to_client_error)?;
-        {
-            let mut table = write_txn
-                .open_table(TABLE_ISSUES)
-                .map_err(to_client_error)?;
-            let id = format!("{}-{}", project_name, table.len().unwrap_or_default());
-            table
-                .insert(
-                    id.as_str(),
-                    &serde_json::to_string(&IssueInfo {
-                        description: description.to_string(),
-                        title: title.to_string(),
-                        status: IssueStatus::Open,
-                        project: project.clone(),
-                    })
-                    .unwrap(),
-                )
-                .map_err(to_client_error)?;
-        }
-        write_txn.commit().map_err(to_client_error)?;
-        Ok(())
-    }
-    async fn update_issue(&mut self, issue: &IssueId, content: &str) -> Result<(), ClientError> {
-        Err(ClientError::NotImplemented)
-    }
-    async fn change_issue_status(
-        &mut self,
-        issue: &IssueId,
-        status: IssueStatus,
-    ) -> Result<(), ClientError> {
-        Err(ClientError::NotImplemented)
-    }
-    async fn get_comments(&self, issue: &IssueId) -> Result<Vec<CommentId>, ClientError> {
-        Err(ClientError::NotImplemented)
-    }
-    async fn get_comment_info(&self, comment: &CommentId) -> Result<CommentInfo, ClientError> {
-        Err(ClientError::NotImplemented)
-    }
-    async fn add_comment(
-        &mut self,
-        issue: &IssueId,
-        content: &str,
-    ) -> Result<CommentId, ClientError> {
-        Err(ClientError::NotImplemented)
-    }
-    async fn update_comment(
-        &mut self,
-        comment: &CommentId,
-        content: &str,
-    ) -> Result<(), ClientError> {
-        Err(ClientError::NotImplemented)
-    }
-    async fn delete_comment(&mut self, comment: &CommentId) -> Result<(), ClientError> {
-        Err(ClientError::NotImplemented)
     }
 }

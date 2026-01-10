@@ -4,8 +4,9 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+issuecraft-ql.workspace = true
 thiserror.workspace = true
 facet.workspace = true
-chrono.workspace = true
+facet-json.workspace = true
 async-trait.workspace = true
-serde.workspace = true
+time.workspace = true

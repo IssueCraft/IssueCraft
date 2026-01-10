@@ -1,4 +1,4 @@
-use issuecraft_ql::parse;
+use issuecraft_ql::parse_query;
 use std::env;
 
 fn main() {
@@ -14,7 +14,7 @@ fn main() {
 
     if args.len() > 1 {
         let query = args[1..].join(" ");
-        let parsed = parse(&query);
+        let parsed = parse_query(&query);
 
         match parsed {
             Ok(statement) => {

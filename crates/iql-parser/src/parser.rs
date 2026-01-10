@@ -1,6 +1,6 @@
 use crate::ast::*;
 use crate::error::{ParseError, ParseResult};
-use crate::lexer::{tokenize, Token};
+use crate::lexer::{Token, tokenize};
 
 pub struct Parser {
     tokens: Vec<Token>,
@@ -319,22 +319,22 @@ impl Parser {
         }))
     }
 
-    fn parse_columns(&mut self) -> ParseResult<Vec<Column>> {
+    fn parse_columns(&mut self) -> ParseResult<Columns> {
         if self.match_token(&Token::Star) {
-            return Ok(vec![Column::All]);
+            return Ok(Columns::All);
         }
 
         let mut columns = Vec::new();
         loop {
             let col = self.parse_identifier("COLUMN")?;
-            columns.push(Column::Named(col));
+            columns.push(col);
 
             if !self.match_token(&Token::Comma) {
                 break;
             }
         }
 
-        Ok(columns)
+        Ok(Columns::Named(columns))
     }
 
     fn parse_entity_type(&mut self) -> ParseResult<EntityType> {
@@ -922,7 +922,7 @@ mod tests {
         if let Ok(Statement::Close(stmt)) = result {
             assert_eq!(
                 stmt.issue_id,
-                IssueId::ProjectIssue {
+                IssueId {
                     project: "backend".to_string(),
                     number: 42
                 }

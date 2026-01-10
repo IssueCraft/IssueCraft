@@ -41,7 +41,7 @@ pub enum CreateStatement {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SelectStatement {
-    pub columns: Vec<Column>,
+    pub columns: Columns,
     pub from: EntityType,
     pub filter: Option<FilterExpression>,
     pub order_by: Option<OrderBy>,
@@ -50,9 +50,18 @@ pub struct SelectStatement {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Column {
+pub enum Columns {
     All,
-    Named(String),
+    Named(Vec<String>),
+}
+
+impl Columns {
+    pub fn len(&self) -> usize {
+        match self {
+            Columns::All => usize::MAX,
+            Columns::Named(cols) => cols.len(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
