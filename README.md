@@ -52,4 +52,4 @@ Examples:
 - `ASSIGN project#123 TO username`
 - `CLOSE project#123`
 
-More info can be found here: [crates/iql-parser/README.md](./crates/iql-parser/README.md)
+More info can be found here: [issuecraft-ql](https://crates.io/crates/issuecraft-ql)
