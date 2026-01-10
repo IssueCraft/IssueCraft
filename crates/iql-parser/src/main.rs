@@ -79,8 +79,4 @@ fn print_help() {
     println!("Priority Levels: critical, high, medium, low");
     println!("Issue ID format: <project#number> (e.g., 'PROJ#123')");
     println!();
-    println!("Interactive Commands:");
-    println!("  help, ?     - Show this help message");
-    println!("  exit, quit  - Exit the interactive mode");
-    println!();
 }
