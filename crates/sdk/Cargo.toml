@@ -4,7 +4,6 @@ description = "The IssueCraft SDK for building custom clients and integrations"
 version.workspace = true
 edition.workspace = true
 license-file.workspace = true
-repository.workspace = true
 
 [dependencies]
 thiserror.workspace = true

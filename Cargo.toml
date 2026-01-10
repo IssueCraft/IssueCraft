@@ -7,7 +7,6 @@ default-members = ["."]
 version = "0.2.0"
 edition = "2024"
 license-file = "LICENSE"
-repository = "https://github.com/IssueCraft/IssueCraft"
 
 [package]
 name = "issuecraft"
@@ -16,7 +15,6 @@ readme = "README.md"
 version.workspace = true
 edition.workspace = true
 license-file.workspace = true
-repository.workspace = true
 
 [features]
 default = ["full"]
