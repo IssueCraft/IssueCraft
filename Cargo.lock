@@ -1067,7 +1067,9 @@ dependencies = [
 name = "issuecraft-ql"
 version = "0.1.0"
 dependencies = [
+ "facet-value",
  "logos",
+ "regex",
  "thiserror",
 ]
 

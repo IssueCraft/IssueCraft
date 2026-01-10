@@ -7,7 +7,7 @@ use issuecraft_common::{
     Client, ClientError, CommentId, CommentInfo, IssueId, IssueInfo, IssueStatus, LoginInfo,
     ProjectId, ProjectInfo, UserId, UserInfo,
 };
-use issuecraft_ql::{SelectStatement, parse_query};
+use issuecraft_ql::{ComparisonOp, FilterExpression, SelectStatement, parse_query};
 use redb::{
     Key, ReadableDatabase, ReadableTable, ReadableTableMetadata, TableDefinition, TableHandle,
     TransactionError, backends::InMemoryBackend,
@@ -146,7 +146,7 @@ impl Database {
                 .into_iter()
                 .filter(|(k, v)| match filter {
                     None => true,
-                    Some(filter_expr) => true,
+                    Some(filter_expr) => filter_expr.matches(v),
                 })
                 .map(|(k, v)| from_value::<V>(v).map_err(to_client_error).map(|v| (k, v)))
                 .collect::<Result<Vec<_>, _>>()?)

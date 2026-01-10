@@ -1,5 +1,7 @@
 use std::fmt;
 
+use facet_value::Value as FacetValue;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Statement {
     Create(CreateStatement),
@@ -99,6 +101,152 @@ pub enum FilterExpression {
     },
     IsNull(String),
     IsNotNull(String),
+}
+
+impl FilterExpression {
+    pub fn matches(&self, value: &FacetValue) -> bool {
+        match self {
+            FilterExpression::Comparison {
+                field,
+                op,
+                value: filter_value,
+            } => {
+                let obj = match value.as_object() {
+                    Some(obj) => obj,
+                    None => return false,
+                };
+
+                let field_value = match obj.get(field) {
+                    Some(v) => v,
+                    None => return false,
+                };
+
+                Self::compare_values(field_value, op, filter_value)
+            }
+            FilterExpression::And(left, right) => left.matches(value) && right.matches(value),
+            FilterExpression::Or(left, right) => left.matches(value) || right.matches(value),
+            FilterExpression::Not(expr) => !expr.matches(value),
+            FilterExpression::In { field, values } => {
+                let obj = match value.as_object() {
+                    Some(obj) => obj,
+                    None => return false,
+                };
+
+                let field_value = match obj.get(field) {
+                    Some(v) => v,
+                    None => return false,
+                };
+
+                values.iter().any(|filter_val| {
+                    Self::compare_values(field_value, &ComparisonOp::Equal, filter_val)
+                })
+            }
+            FilterExpression::IsNull(field) => {
+                let obj = match value.as_object() {
+                    Some(obj) => obj,
+                    None => return false,
+                };
+
+                match obj.get(field) {
+                    None => true,
+                    Some(v) => v.is_null(),
+                }
+            }
+            FilterExpression::IsNotNull(field) => {
+                let obj = match value.as_object() {
+                    Some(obj) => obj,
+                    None => return false,
+                };
+
+                match obj.get(field) {
+                    None => false,
+                    Some(v) => !v.is_null(),
+                }
+            }
+        }
+    }
+
+    fn compare_values(field_value: &FacetValue, op: &ComparisonOp, filter_value: &Value) -> bool {
+        match op {
+            ComparisonOp::Equal => {
+                if let Some(converted) = Self::convert_iql_value_to_facet(filter_value) {
+                    field_value == &converted
+                } else {
+                    false
+                }
+            }
+            ComparisonOp::NotEqual => {
+                if let Some(converted) = Self::convert_iql_value_to_facet(filter_value) {
+                    field_value != &converted
+                } else {
+                    true
+                }
+            }
+            ComparisonOp::GreaterThan => {
+                if let Some(converted) = Self::convert_iql_value_to_facet(filter_value) {
+                    field_value.partial_cmp(&converted) == Some(std::cmp::Ordering::Greater)
+                } else {
+                    false
+                }
+            }
+            ComparisonOp::LessThan => {
+                if let Some(converted) = Self::convert_iql_value_to_facet(filter_value) {
+                    field_value.partial_cmp(&converted) == Some(std::cmp::Ordering::Less)
+                } else {
+                    false
+                }
+            }
+            ComparisonOp::GreaterThanOrEqual => {
+                if let Some(converted) = Self::convert_iql_value_to_facet(filter_value) {
+                    matches!(
+                        field_value.partial_cmp(&converted),
+                        Some(std::cmp::Ordering::Greater | std::cmp::Ordering::Equal)
+                    )
+                } else {
+                    false
+                }
+            }
+            ComparisonOp::LessThanOrEqual => {
+                if let Some(converted) = Self::convert_iql_value_to_facet(filter_value) {
+                    matches!(
+                        field_value.partial_cmp(&converted),
+                        Some(std::cmp::Ordering::Less | std::cmp::Ordering::Equal)
+                    )
+                } else {
+                    false
+                }
+            }
+            ComparisonOp::Like => {
+                let field_str = field_value.as_string().map(|s| s.as_str()).unwrap_or("");
+                if let Value::String(pattern) = filter_value {
+                    let pattern = pattern.replace("%", ".*");
+                    if let Ok(regex) = regex::Regex::new(&format!("^{}$", pattern)) {
+                        regex.is_match(field_str)
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            }
+        }
+    }
+
+    fn convert_iql_value_to_facet(iql_value: &Value) -> Option<FacetValue> {
+        match iql_value {
+            Value::String(s) => Some(facet_value::VString::new(s).into_value()),
+            Value::Number(n) => Some(facet_value::VNumber::from_u64(*n as u64).into_value()),
+            Value::Float(f) => Some(facet_value::VNumber::from_f64(*f as f64)?.into_value()),
+            Value::Boolean(b) => Some(if *b {
+                facet_value::Value::TRUE
+            } else {
+                facet_value::Value::FALSE
+            }),
+            Value::Null => Some(facet_value::Value::NULL),
+            Value::Priority(p) => Some(facet_value::VString::new(&p.to_string()).into_value()),
+            Value::Identifier(id) => Some(facet_value::VString::new(id).into_value()),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

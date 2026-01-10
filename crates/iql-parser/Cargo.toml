@@ -6,3 +6,5 @@ edition.workspace = true
 [dependencies]
 logos = "0.16"
 thiserror.workspace = true
+facet-value.workspace = true
+regex.workspace = true

@@ -94,26 +94,37 @@ impl Parser {
         let mut name = None;
 
         if self.match_token(&Token::With) {
+            let mut started = true;
             loop {
                 match self.current() {
                     Token::Email => {
                         self.advance();
                         email = Some(self.parse_string_value("EMAIL")?);
+                        started = false;
                     }
                     Token::Name => {
                         self.advance();
                         name = Some(self.parse_string_value("NAME")?);
+                        started = false;
                     }
                     Token::Identifier(id) if id.eq_ignore_ascii_case("email") => {
                         self.advance();
                         email = Some(self.parse_string_value("EMAIL")?);
+                        started = false;
                     }
                     Token::Identifier(id) if id.eq_ignore_ascii_case("name") => {
                         self.advance();
                         name = Some(self.parse_string_value("NAME")?);
+                        started = false;
                     }
                     _ => break,
                 }
+            }
+            if started {
+                return Err(ParseError::MissingClause {
+                    clause: "at least one of EMAIL or NAME".to_string(),
+                    position: self.get_position_for_error(),
+                });
             }
         }
 
@@ -133,15 +144,18 @@ impl Parser {
         let mut owner = None;
 
         if self.match_token(&Token::With) {
+            let mut started = true;
             loop {
                 match self.current() {
                     Token::Name => {
                         self.advance();
                         name = Some(self.parse_string_value("NAME")?);
+                        started = false;
                     }
                     Token::Description => {
                         self.advance();
                         description = Some(self.parse_string_value("DESCRIPTION")?);
+                        started = false;
                     }
                     Token::Owner => {
                         self.advance();
@@ -150,17 +164,26 @@ impl Parser {
                     Token::Identifier(id) if id.eq_ignore_ascii_case("name") => {
                         self.advance();
                         name = Some(self.parse_string_value("NAME")?);
+                        started = false;
                     }
                     Token::Identifier(id) if id.eq_ignore_ascii_case("description") => {
                         self.advance();
                         description = Some(self.parse_string_value("DESCRIPTION")?);
+                        started = false;
                     }
                     Token::Identifier(id) if id.eq_ignore_ascii_case("owner") => {
                         self.advance();
                         owner = Some(self.parse_identifier("OWNER")?);
+                        started = false;
                     }
                     _ => break,
                 }
+            }
+            if started {
+                return Err(ParseError::MissingClause {
+                    clause: "at least one of NAME, DESCRIPTION, or OWNER".to_string(),
+                    position: self.get_position_for_error(),
+                });
             }
         }
 

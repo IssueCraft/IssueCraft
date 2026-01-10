@@ -19,6 +19,7 @@ pub enum ClientError {
 #[derive(Debug, Clone, Facet)]
 #[facet(transparent)]
 pub struct UserId(pub String);
+
 #[derive(Debug, Clone, Facet)]
 pub struct UserInfo {
     pub display: Option<String>,
@@ -28,6 +29,7 @@ pub struct UserInfo {
 #[derive(Debug, Clone, Facet)]
 #[facet(transparent)]
 pub struct ProjectId(pub String);
+
 #[derive(Debug, Clone, Facet)]
 pub struct ProjectInfo {
     pub owner: UserId,
@@ -54,6 +56,7 @@ pub enum IssueStatus {
 #[derive(Debug, Clone, Facet)]
 #[facet(transparent)]
 pub struct IssueId(pub String);
+
 #[derive(Debug, Clone, Facet)]
 pub struct IssueInfo {
     pub title: String,
@@ -65,6 +68,7 @@ pub struct IssueInfo {
 #[derive(Debug, Clone, Facet)]
 #[facet(transparent)]
 pub struct CommentId(pub String);
+
 #[derive(Debug, Clone, Facet)]
 pub struct CommentInfo {
     pub created_at: time::UtcDateTime,
