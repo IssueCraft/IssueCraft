@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use facet::Facet;
 
-const DEFAULT_DB_PATH: &str = ".ic.db";
+const DEFAULT_DB_PATH: &str = "issuecraft.redb";
 
 #[derive(Debug, Facet)]
 pub struct Config {
