@@ -5,7 +5,7 @@ pub enum ParseError {
     #[error("Unexpected end of input")]
     UnexpectedEof,
 
-    #[error("Unexpected token '{found}' at position {position}. Expected {expected}")]
+    #[error("Unexpected token '{found}' at position {position}. Expected '{expected}'")]
     UnexpectedToken {
         expected: String,
         found: String,

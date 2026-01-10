@@ -1,5 +1,6 @@
 use std::fmt;
 
+use facet::Facet;
 use facet_value::Value as FacetValue;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -11,6 +12,71 @@ pub enum Statement {
     Assign(AssignStatement),
     Close(CloseStatement),
     Comment(CommentStatement),
+}
+
+pub trait IdHelper {
+    fn id_from_str(val: &str) -> Self;
+    fn str_from_id(&self) -> &str;
+}
+
+impl IdHelper for String {
+    fn id_from_str(val: &str) -> Self {
+        val.to_string()
+    }
+
+    fn str_from_id(&self) -> &str {
+        self.as_str()
+    }
+}
+
+#[derive(Debug, Clone, Facet, PartialEq)]
+#[repr(C)]
+#[facet(transparent)]
+pub struct UserId(pub String);
+
+#[derive(Debug, Clone, Facet, PartialEq)]
+#[repr(C)]
+#[facet(transparent)]
+pub struct ProjectId(pub String);
+
+#[derive(Debug, Clone, Facet, PartialEq)]
+#[repr(C)]
+#[facet(transparent)]
+pub struct IssueId(pub String);
+
+#[derive(Debug, Clone, Facet, PartialEq)]
+#[repr(C)]
+#[facet(transparent)]
+pub struct CommentId(pub String);
+
+impl IdHelper for ProjectId {
+    fn id_from_str(val: &str) -> Self {
+        ProjectId(val.to_string())
+    }
+
+    fn str_from_id(&self) -> &str {
+        &self.0
+    }
+}
+
+impl IdHelper for IssueId {
+    fn id_from_str(val: &str) -> Self {
+        IssueId(val.to_string())
+    }
+
+    fn str_from_id(&self) -> &str {
+        &self.0
+    }
+}
+
+impl IdHelper for CommentId {
+    fn id_from_str(val: &str) -> Self {
+        CommentId(val.to_string())
+    }
+
+    fn str_from_id(&self) -> &str {
+        &self.0
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -31,13 +97,13 @@ pub enum CreateStatement {
         title: String,
         description: Option<String>,
         priority: Option<Priority>,
-        assignee: Option<String>,
+        assignee: Option<UserId>,
         labels: Vec<String>,
     },
     Comment {
         issue_id: IssueId,
         content: String,
-        author: Option<String>,
+        author: Option<UserId>,
     },
 }
 
@@ -90,21 +156,21 @@ pub enum FilterExpression {
     Comparison {
         field: String,
         op: ComparisonOp,
-        value: Value,
+        value: IqlValue,
     },
     And(Box<FilterExpression>, Box<FilterExpression>),
     Or(Box<FilterExpression>, Box<FilterExpression>),
     Not(Box<FilterExpression>),
     In {
         field: String,
-        values: Vec<Value>,
+        values: Vec<IqlValue>,
     },
     IsNull(String),
     IsNotNull(String),
 }
 
 impl FilterExpression {
-    pub fn matches(&self, value: &FacetValue) -> bool {
+    pub fn matches(&self, id: &str, value: &FacetValue) -> bool {
         match self {
             FilterExpression::Comparison {
                 field,
@@ -116,6 +182,11 @@ impl FilterExpression {
                     None => return false,
                 };
 
+                if field == "id" {
+                    let id_value = facet_value::VString::new(id).into_value();
+                    return Self::compare_values(&id_value, op, filter_value);
+                }
+
                 let field_value = match obj.get(field) {
                     Some(v) => v,
                     None => return false,
@@ -123,9 +194,13 @@ impl FilterExpression {
 
                 Self::compare_values(field_value, op, filter_value)
             }
-            FilterExpression::And(left, right) => left.matches(value) && right.matches(value),
-            FilterExpression::Or(left, right) => left.matches(value) || right.matches(value),
-            FilterExpression::Not(expr) => !expr.matches(value),
+            FilterExpression::And(left, right) => {
+                left.matches(id, value) && right.matches(id, value)
+            }
+            FilterExpression::Or(left, right) => {
+                left.matches(id, value) || right.matches(id, value)
+            }
+            FilterExpression::Not(expr) => !expr.matches(id, value),
             FilterExpression::In { field, values } => {
                 let obj = match value.as_object() {
                     Some(obj) => obj,
@@ -166,7 +241,11 @@ impl FilterExpression {
         }
     }
 
-    fn compare_values(field_value: &FacetValue, op: &ComparisonOp, filter_value: &Value) -> bool {
+    fn compare_values(
+        field_value: &FacetValue,
+        op: &ComparisonOp,
+        filter_value: &IqlValue,
+    ) -> bool {
         match op {
             ComparisonOp::Equal => {
                 if let Some(converted) = Self::convert_iql_value_to_facet(filter_value) {
@@ -218,7 +297,7 @@ impl FilterExpression {
             }
             ComparisonOp::Like => {
                 let field_str = field_value.as_string().map(|s| s.as_str()).unwrap_or("");
-                if let Value::String(pattern) = filter_value {
+                if let IqlValue::String(pattern) = filter_value {
                     let pattern = pattern.replace("%", ".*");
                     if let Ok(regex) = regex::Regex::new(&format!("^{}$", pattern)) {
                         regex.is_match(field_str)
@@ -232,19 +311,19 @@ impl FilterExpression {
         }
     }
 
-    fn convert_iql_value_to_facet(iql_value: &Value) -> Option<FacetValue> {
+    fn convert_iql_value_to_facet(iql_value: &IqlValue) -> Option<FacetValue> {
         match iql_value {
-            Value::String(s) => Some(facet_value::VString::new(s).into_value()),
-            Value::Number(n) => Some(facet_value::VNumber::from_u64(*n as u64).into_value()),
-            Value::Float(f) => Some(facet_value::VNumber::from_f64(*f as f64)?.into_value()),
-            Value::Boolean(b) => Some(if *b {
+            IqlValue::String(s) => Some(facet_value::VString::new(s).into_value()),
+            IqlValue::Number(n) => Some(facet_value::VNumber::from_u64(*n as u64).into_value()),
+            IqlValue::Float(f) => Some(facet_value::VNumber::from_f64(*f as f64)?.into_value()),
+            IqlValue::Boolean(b) => Some(if *b {
                 facet_value::Value::TRUE
             } else {
                 facet_value::Value::FALSE
             }),
-            Value::Null => Some(facet_value::Value::NULL),
-            Value::Priority(p) => Some(facet_value::VString::new(&p.to_string()).into_value()),
-            Value::Identifier(id) => Some(facet_value::VString::new(id).into_value()),
+            IqlValue::Null => Some(facet_value::Value::NULL),
+            IqlValue::Priority(p) => Some(facet_value::VString::new(&p.to_string()).into_value()),
+            IqlValue::Identifier(id) => Some(facet_value::VString::new(id).into_value()),
         }
     }
 }
@@ -289,7 +368,7 @@ pub enum UpdateTarget {
 #[derive(Debug, Clone, PartialEq)]
 pub struct FieldUpdate {
     pub field: String,
-    pub value: Value,
+    pub value: IqlValue,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -324,18 +403,6 @@ pub struct CommentStatement {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct IssueId {
-    pub project: String,
-    pub number: u64,
-}
-
-impl fmt::Display for IssueId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}#{}", self.project, self.number)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
 pub enum Priority {
     Critical,
     High,
@@ -355,7 +422,7 @@ impl fmt::Display for Priority {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Value {
+pub enum IqlValue {
     String(String),
     Number(i64),
     Float(f64),
@@ -365,16 +432,16 @@ pub enum Value {
     Identifier(String),
 }
 
-impl fmt::Display for Value {
+impl fmt::Display for IqlValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Value::String(s) => write!(f, "'{}'", s),
-            Value::Number(n) => write!(f, "{}", n),
-            Value::Float(fl) => write!(f, "{}", fl),
-            Value::Boolean(b) => write!(f, "{}", b),
-            Value::Null => write!(f, "NULL"),
-            Value::Priority(p) => write!(f, "{}", p),
-            Value::Identifier(id) => write!(f, "{}", id),
+            IqlValue::String(s) => write!(f, "'{}'", s),
+            IqlValue::Number(n) => write!(f, "{}", n),
+            IqlValue::Float(fl) => write!(f, "{}", fl),
+            IqlValue::Boolean(b) => write!(f, "{}", b),
+            IqlValue::Null => write!(f, "NULL"),
+            IqlValue::Priority(p) => write!(f, "{}", p),
+            IqlValue::Identifier(id) => write!(f, "{}", id),
         }
     }
 }

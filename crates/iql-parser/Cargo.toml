@@ -9,5 +9,7 @@ repository.workspace = true
 [dependencies]
 logos = "0.16"
 thiserror.workspace = true
+facet.workspace = true
 facet-value.workspace = true
 regex.workspace = true
+async-trait.workspace = true

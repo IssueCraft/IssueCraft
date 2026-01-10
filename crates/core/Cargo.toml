@@ -13,3 +13,4 @@ facet.workspace = true
 facet-json.workspace = true
 async-trait.workspace = true
 time.workspace = true
+nanoid.workspace = true

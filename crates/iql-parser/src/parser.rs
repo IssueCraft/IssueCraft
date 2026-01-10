@@ -230,7 +230,7 @@ impl Parser {
                 }
                 Token::Assignee => {
                     self.advance();
-                    assignee = Some(self.parse_identifier("ASSIGNEE_ID")?);
+                    assignee = Some(UserId(self.parse_identifier("ASSIGNEE_ID")?));
                 }
                 Token::Labels => {
                     self.advance();
@@ -250,7 +250,7 @@ impl Parser {
                 }
                 Token::Identifier(id) if id.eq_ignore_ascii_case("assignee") => {
                     self.advance();
-                    assignee = Some(self.parse_identifier("ASSIGNEE_ID")?);
+                    assignee = Some(UserId(self.parse_identifier("ASSIGNEE_ID")?));
                 }
                 Token::Identifier(id) if id.eq_ignore_ascii_case("labels") => {
                     self.advance();
@@ -288,7 +288,7 @@ impl Parser {
 
         let mut author = None;
         if self.match_token(&Token::Author) {
-            author = Some(self.parse_identifier("AUTHOR")?);
+            author = Some(UserId(self.parse_identifier("AUTHOR")?));
         }
 
         Ok(Statement::Create(CreateStatement::Comment {
@@ -660,7 +660,7 @@ impl Parser {
 
             if self.match_token(&Token::Hash) {
                 let number = self.parse_number()? as u64;
-                return Ok(IssueId { project, number });
+                return Ok(IssueId(format!("{}#{}", project, number)));
             } else {
                 return Err(ParseError::InvalidIssueId {
                     value: project,
@@ -732,53 +732,53 @@ impl Parser {
         Ok(labels)
     }
 
-    fn parse_value(&mut self) -> ParseResult<Value> {
+    fn parse_value(&mut self) -> ParseResult<IqlValue> {
         match self.current() {
             Token::String(s) => {
-                let value = Value::String(s.clone());
+                let value = IqlValue::String(s.clone());
                 self.advance();
                 Ok(value)
             }
             Token::Number(n) => {
-                let value = Value::Number(*n);
+                let value = IqlValue::Number(*n);
                 self.advance();
                 Ok(value)
             }
             Token::Float(f) => {
-                let value = Value::Float(*f);
+                let value = IqlValue::Float(*f);
                 self.advance();
                 Ok(value)
             }
             Token::True => {
                 self.advance();
-                Ok(Value::Boolean(true))
+                Ok(IqlValue::Boolean(true))
             }
             Token::False => {
                 self.advance();
-                Ok(Value::Boolean(false))
+                Ok(IqlValue::Boolean(false))
             }
             Token::Null => {
                 self.advance();
-                Ok(Value::Null)
+                Ok(IqlValue::Null)
             }
             Token::Critical => {
                 self.advance();
-                Ok(Value::Priority(Priority::Critical))
+                Ok(IqlValue::Priority(Priority::Critical))
             }
             Token::High => {
                 self.advance();
-                Ok(Value::Priority(Priority::High))
+                Ok(IqlValue::Priority(Priority::High))
             }
             Token::Medium => {
                 self.advance();
-                Ok(Value::Priority(Priority::Medium))
+                Ok(IqlValue::Priority(Priority::Medium))
             }
             Token::Low => {
                 self.advance();
-                Ok(Value::Priority(Priority::Low))
+                Ok(IqlValue::Priority(Priority::Low))
             }
             Token::Identifier(id) => {
-                let value = Value::Identifier(id.clone());
+                let value = IqlValue::Identifier(id.clone());
                 self.advance();
                 Ok(value)
             }
@@ -790,7 +790,7 @@ impl Parser {
         }
     }
 
-    fn parse_value_list(&mut self) -> ParseResult<Vec<Value>> {
+    fn parse_value_list(&mut self) -> ParseResult<Vec<IqlValue>> {
         let mut values = Vec::new();
 
         loop {
@@ -943,13 +943,7 @@ mod tests {
         assert!(result.is_ok());
 
         if let Ok(Statement::Close(stmt)) = result {
-            assert_eq!(
-                stmt.issue_id,
-                IssueId {
-                    project: "backend".to_string(),
-                    number: 42
-                }
-            );
+            assert_eq!(stmt.issue_id, IssueId("backend#42".to_string()));
         }
     }
 

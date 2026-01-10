@@ -2,9 +2,10 @@
 
 use std::path::{Path, PathBuf};
 
-use issuecraft_core::{Client, ProjectId, UserId};
+use issuecraft_core::Client;
 
 use clap::Parser;
+use issuecraft_ql::{ExecutionEngine, ExecutionResult};
 
 use crate::{
     cli::{Cli, Command},
@@ -40,7 +41,7 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn run_query(config: &Config, query: &str) -> anyhow::Result<String> {
+async fn run_query(config: &Config, query: &str) -> anyhow::Result<ExecutionResult> {
     let db_path = format!("{}", config.db_path.display());
     let db_path = PathBuf::from(shellexpand::full(&db_path)?.to_string());
     if let Some(db_folder) = db_path.parent() {

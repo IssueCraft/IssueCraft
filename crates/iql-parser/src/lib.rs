@@ -3,13 +3,92 @@ mod error;
 mod lexer;
 mod parser;
 
+use std::fmt::Display;
+
 pub use ast::*;
+use async_trait::async_trait;
 pub use error::{ParseError, ParseResult};
 use parser::Parser;
 
 pub fn parse_query(query: &str) -> ParseResult<Statement> {
     let mut parser = Parser::new(query);
     parser.parse()
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum IqlError {
+    #[error("IQL query could not be parsed: {0}")]
+    MalformedIql(#[from] ParseError),
+    #[error("Not implemented")]
+    NotImplemented,
+    #[error("This action is not supported by the chosen backend")]
+    NotSupported,
+    #[error("A Project with the name '{0}' already exists")]
+    ProjectAlreadyExists(String),
+    #[error("No Project with the name '{0}' exists")]
+    ProjectNotFound(String),
+    #[error("{0}")]
+    ImplementationSpecific(String),
+}
+
+#[async_trait]
+pub trait ExecutionEngine {
+    async fn execute(&mut self, query: &str) -> Result<ExecutionResult, IqlError>;
+}
+
+#[derive(Debug, Clone)]
+pub struct ExecutionResult {
+    pub affected_rows: u128,
+    pub info: Option<String>,
+}
+
+impl Display for ExecutionResult {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Affected Rows: {}", self.affected_rows)?;
+        if let Some(info) = &self.info {
+            write!(f, "\nInfo: {}", info)?;
+        }
+        Ok(())
+    }
+}
+
+impl From<String> for ExecutionResult {
+    fn from(s: String) -> Self {
+        Self {
+            affected_rows: 0,
+            info: Some(s),
+        }
+    }
+}
+
+impl From<&str> for ExecutionResult {
+    fn from(s: &str) -> Self {
+        Self {
+            affected_rows: 0,
+            info: Some(s.to_string()),
+        }
+    }
+}
+
+impl ExecutionResult {
+    pub fn new(rows: u128) -> Self {
+        Self {
+            affected_rows: rows,
+            info: None,
+        }
+    }
+
+    pub fn zero() -> Self {
+        Self {
+            affected_rows: 0,
+            info: None,
+        }
+    }
+
+    pub fn with_info(mut self, info: &str) -> Self {
+        self.info = Some(info.to_string());
+        self
+    }
 }
 
 #[cfg(test)]

@@ -1,37 +1,32 @@
 use async_trait::async_trait;
 use facet::Facet;
 use facet_json::{DeserializeError, JsonError};
+use issuecraft_ql::{ExecutionEngine, ExecutionResult, ProjectId, UserId};
 
 #[derive(thiserror::Error, Debug)]
 pub enum ClientError {
-    #[error("Database error: {0}")]
-    MalformedIql(#[from] issuecraft_ql::ParseError),
-    #[error("Deserialization error: {0}")]
-    DeserializationError(#[from] DeserializeError<JsonError>),
-    #[error("Client specific: {0}")]
-    ClientSpecific(String),
     #[error("Not implemented")]
     NotImplemented,
     #[error("This action is not supported by the chosen backend")]
     NotSupported,
+    #[error("IQL error: {0}")]
+    IqlError(#[from] issuecraft_ql::IqlError),
+    #[error("Deserialization error: {0}")]
+    DeserializationError(#[from] DeserializeError<JsonError>),
+    #[error("Client specific: {0}")]
+    ClientSpecific(String),
 }
 
 #[derive(Debug, Clone, Facet)]
-#[facet(transparent)]
-pub struct UserId(pub String);
-
-#[derive(Debug, Clone, Facet)]
 pub struct UserInfo {
+    pub name: String,
     pub display: Option<String>,
     pub email: String,
 }
 
 #[derive(Debug, Clone, Facet)]
-#[facet(transparent)]
-pub struct ProjectId(pub String);
-
-#[derive(Debug, Clone, Facet)]
 pub struct ProjectInfo {
+    pub description: Option<String>,
     pub owner: UserId,
     pub display: Option<String>,
 }
@@ -54,20 +49,23 @@ pub enum IssueStatus {
 }
 
 #[derive(Debug, Clone, Facet)]
-#[facet(transparent)]
-pub struct IssueId(pub String);
+#[repr(C)]
+pub enum Priority {
+    Low,
+    Medium,
+    High,
+    Critical,
+}
 
 #[derive(Debug, Clone, Facet)]
 pub struct IssueInfo {
     pub title: String,
-    pub description: String,
+    pub description: Option<String>,
     pub status: IssueStatus,
     pub project: ProjectId,
+    pub priority: Option<Priority>,
+    pub assignee: Option<UserId>,
 }
-
-#[derive(Debug, Clone, Facet)]
-#[facet(transparent)]
-pub struct CommentId(pub String);
 
 #[derive(Debug, Clone, Facet)]
 pub struct CommentInfo {
@@ -91,9 +89,21 @@ pub struct LoginInfo {
 
 #[async_trait]
 pub trait Client {
-    async fn login(&mut self, login: LoginInfo) -> Result<(), ClientError>;
-    async fn logout(&mut self) -> Result<(), ClientError>;
-    async fn execute(&mut self, query: &str) -> Result<String, ClientError>;
+    async fn login(&mut self, _login: LoginInfo) -> Result<(), ClientError> {
+        Err(ClientError::NotSupported)
+    }
+    async fn logout(&mut self) -> Result<(), ClientError> {
+        Err(ClientError::NotSupported)
+    }
+    async fn query(&mut self, query: &str) -> Result<ExecutionResult, ClientError>;
+}
+
+#[async_trait]
+impl<E: ExecutionEngine + Send> Client for E {
+    async fn query(&mut self, query: &str) -> Result<ExecutionResult, ClientError> {
+        let result = self.execute(query).await?;
+        Ok(result)
+    }
 }
 
 pub trait Backend {

@@ -6,6 +6,7 @@
         "issuecraft",
         "myproject",
         "redb",
+        "repr",
         "shellexpand",
         "sqlx",
         "thiserror"
