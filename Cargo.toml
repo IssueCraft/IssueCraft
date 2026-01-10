@@ -4,7 +4,7 @@ members = ["crates/core", "crates/sdk", "crates/iql-parser"]
 default-members = ["."]
 
 [workspace.package]
-version = "0.1.0-pre-alpha.0"
+version = "0.1.0"
 edition = "2024"
 license-file = "LICENSE"
 repository = "https://github.com/IssueCraft/IssueCraft"
