@@ -1,7 +1,21 @@
+[workspace]
+resolver = "3"
+members = ["crates/core", "crates/sdk", "crates/iql-parser"]
+default-members = ["."]
+
+[workspace.package]
+version = "0.0.0-pre-alpha"
+edition = "2024"
+license-file = "LICENSE"
+repository = "https://github.com/IssueCraft/IssueCraft"
+
 [package]
 name = "issuecraft"
+description = "A dev-first issue tracking system"
 version.workspace = true
 edition.workspace = true
+license-file.workspace = true
+repository.workspace = true
 
 [features]
 default = ["full"]
@@ -30,26 +44,15 @@ facet-value.workspace = true
 
 issuecraft-core.workspace = true
 issuecraft-sdk.workspace = true
-issuecraft-common.workspace = true
 issuecraft-ql.workspace = true
 
 redb = "3.1.0"
 directories = "6.0.0"
 shellexpand = { version = "3.1.1", features = ["full"] }
 
-[workspace]
-resolver = "3"
-members = ["crates/core", "crates/sdk", "crates/common", "crates/iql-parser"]
-default-members = ["."]
-
-[workspace.package]
-version = "0.0.0-pre-alpha"
-edition = "2024"
-
 [workspace.dependencies]
 issuecraft-core = { version = "0.0.0-pre-alpha", path = "crates/core" }
 issuecraft-sdk = { version = "0.0.0-pre-alpha", path = "crates/sdk" }
-issuecraft-common = { version = "0.0.0-pre-alpha", path = "crates/common" }
 issuecraft-ql = { version = "0.0.0-pre-alpha", path = "crates/iql-parser" }
 facet = { version = "0.42.0", features = ["time"] }
 facet-pretty = "0.42.0"

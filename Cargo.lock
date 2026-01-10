@@ -1077,7 +1077,6 @@ dependencies = [
  "facet-pretty",
  "facet-toml",
  "facet-value",
- "issuecraft-common",
  "issuecraft-core",
  "issuecraft-ql",
  "issuecraft-sdk",
@@ -1088,7 +1087,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "issuecraft-common"
+name = "issuecraft-core"
 version = "0.0.0-pre-alpha"
 dependencies = [
  "async-trait",
@@ -1097,13 +1096,6 @@ dependencies = [
  "issuecraft-ql",
  "thiserror",
  "time",
-]
-
-[[package]]
-name = "issuecraft-core"
-version = "0.0.0-pre-alpha"
-dependencies = [
- "thiserror",
 ]
 
 [[package]]

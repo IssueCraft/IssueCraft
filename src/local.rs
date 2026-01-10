@@ -3,7 +3,7 @@ use std::{fmt::Display, path::PathBuf};
 use async_trait::async_trait;
 use facet::{Facet, Shape, shape_of};
 use facet_value::{Value, from_value};
-use issuecraft_common::{
+use issuecraft_core::{
     Client, ClientError, CommentId, CommentInfo, IssueId, IssueInfo, IssueStatus, LoginInfo,
     ProjectId, ProjectInfo, UserId, UserInfo,
 };

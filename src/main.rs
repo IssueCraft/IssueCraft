@@ -2,7 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
-use issuecraft_common::{Client, ProjectId, UserId};
+use issuecraft_core::{Client, ProjectId, UserId};
 
 use clap::Parser;
 
