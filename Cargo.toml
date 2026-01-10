@@ -12,6 +12,7 @@ repository = "https://github.com/IssueCraft/IssueCraft"
 [package]
 name = "issuecraft"
 description = "A dev-first issue tracking system"
+readme = "README.md"
 version.workspace = true
 edition.workspace = true
 license-file.workspace = true
