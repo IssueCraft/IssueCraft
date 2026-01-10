@@ -4,7 +4,7 @@ members = ["crates/core", "crates/sdk", "crates/iql-parser"]
 default-members = ["."]
 
 [workspace.package]
-version = "0.0.1-pre-alpha"
+version = "0.0.1"
 edition = "2024"
 license-file = "LICENSE"
 repository = "https://github.com/IssueCraft/IssueCraft"
@@ -53,7 +53,7 @@ shellexpand = { version = "3.1.1", features = ["full"] }
 
 [workspace.dependencies]
 issuecraft-core = { version = "0.0.1-pre-alpha", path = "crates/core" }
-issuecraft-sdk = { version = "0.0.0-pre-alpha", path = "crates/sdk" }
+issuecraft-sdk = { version = "0.0.1", path = "crates/sdk" }
 issuecraft-ql = { version = "0.0.1-pre-alpha", path = "crates/iql-parser" }
 facet = { version = "0.42.0", features = ["time"] }
 facet-pretty = "0.42.0"

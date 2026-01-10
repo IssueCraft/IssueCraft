@@ -1065,7 +1065,7 @@ checksum = "a6cb138bb79a146c1bd460005623e142ef0181e3d0219cb493e02f7d08a35695"
 
 [[package]]
 name = "issuecraft"
-version = "0.0.0-pre-alpha"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -1088,7 +1088,7 @@ dependencies = [
 
 [[package]]
 name = "issuecraft-core"
-version = "0.0.0-pre-alpha"
+version = "0.0.1"
 dependencies = [
  "async-trait",
  "facet",
@@ -1100,7 +1100,7 @@ dependencies = [
 
 [[package]]
 name = "issuecraft-ql"
-version = "0.0.0-pre-alpha"
+version = "0.0.1"
 dependencies = [
  "facet-value",
  "logos",
@@ -1110,7 +1110,7 @@ dependencies = [
 
 [[package]]
 name = "issuecraft-sdk"
-version = "0.0.0-pre-alpha"
+version = "0.0.1"
 dependencies = [
  "thiserror",
 ]
