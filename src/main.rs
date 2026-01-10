@@ -1,12 +1,15 @@
 #![allow(unused)]
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use issuecraft_common::{Client, ProjectId, UserId};
 
 use clap::Parser;
 
-use crate::{cli::Cli, config::Config};
+use crate::{
+    cli::{Cli, Command},
+    config::Config,
+};
 
 mod cli;
 mod config;
@@ -14,7 +17,7 @@ mod local;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let Cli { config, query } = Cli::parse();
+    let Cli { config, command } = Cli::parse();
 
     let default_config_path = Path::new(".ic.toml");
 
@@ -30,10 +33,19 @@ async fn main() -> anyhow::Result<()> {
         }
     };
 
-    let mut db = local::Database::new(&local::DatabaseType::File(config.db_path.clone().into()))?;
-    println!("{}", db.execute(&query).await?);
-
-    println!("Config: {config:?}");
+    match command {
+        Command::Query { query } => println!("{}", run_query(&config, &query).await?),
+    }
 
     Ok(())
+}
+
+async fn run_query(config: &Config, query: &str) -> anyhow::Result<String> {
+    let db_path = format!("{}", config.db_path.display());
+    let db_path = PathBuf::from(shellexpand::full(&db_path)?.to_string());
+    if let Some(db_folder) = db_path.parent() {
+        tokio::fs::create_dir_all(db_folder).await?;
+    }
+    let mut db = local::Database::new(&local::DatabaseType::File(db_path))?;
+    Ok(db.execute(query).await?)
 }

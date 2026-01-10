@@ -82,10 +82,8 @@ impl Database {
             let mut table = write_txn
                 .open_table(table_definition)
                 .map_err(to_client_error)?;
-            let project_info_str = facet_json::to_string(info).map_err(to_client_error)?;
-            table
-                .insert(id, &project_info_str)
-                .map_err(to_client_error)?;
+            let info_str = facet_json::to_string(info).map_err(to_client_error)?;
+            table.insert(id, &info_str).map_err(to_client_error)?;
         }
         write_txn.commit().map_err(to_client_error)
     }
