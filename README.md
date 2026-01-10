@@ -6,7 +6,7 @@ A new take on issue tracking.
 
 ## Overview
 
-IssueCraft is an issue tracker that's meant to be production ready, yet simple to use and extend.
+IssueCraft will be an issue tracker that's meant to be production ready, yet simple to use and extend.
 
 ## Features
 
