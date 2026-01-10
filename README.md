@@ -2,7 +2,15 @@
 
 A new take on issue tracking.
 
-## **ATTENTION**
+**ATTENTION: IssueCraft is still in it's infancy and should be considered pre-alpha software**
+
+- [Overview](#overview)
+- [Features](#features)
+- [Planned Features](#planned-features)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Query Language](#query-language)
+
 
 ## Overview
 
@@ -12,6 +20,10 @@ IssueCraft will be an issue tracker that's meant to be production ready, yet sim
 
 - Create and manage projects, issues, and users
 - Custom query language (IQL) for interacting with the system
+
+## Planned Features
+
+- A server for multi-user environments
 
 ## Installation
 
@@ -39,3 +51,5 @@ Examples:
 - `SELECT * FROM issues WHERE status = open`
 - `ASSIGN project#123 TO username`
 - `CLOSE project#123`
+
+More info can be found here: [crates/iql-parser/README.md](./crates/iql-parser/README.md)
