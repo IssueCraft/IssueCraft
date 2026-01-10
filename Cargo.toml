@@ -43,14 +43,14 @@ members = ["crates/core", "crates/sdk", "crates/common", "crates/iql-parser"]
 default-members = ["."]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.0.0-pre-alpha"
 edition = "2024"
 
 [workspace.dependencies]
-issuecraft-core = { version = "0.1.0", path = "crates/core" }
-issuecraft-sdk = { version = "0.1.0", path = "crates/sdk" }
-issuecraft-common = { version = "0.1.0", path = "crates/common" }
-issuecraft-ql = { version = "0.1.0", path = "crates/iql-parser" }
+issuecraft-core = { version = "0.0.0-pre-alpha", path = "crates/core" }
+issuecraft-sdk = { version = "0.0.0-pre-alpha", path = "crates/sdk" }
+issuecraft-common = { version = "0.0.0-pre-alpha", path = "crates/common" }
+issuecraft-ql = { version = "0.0.0-pre-alpha", path = "crates/iql-parser" }
 facet = { version = "0.42.0", features = ["time"] }
 facet-pretty = "0.42.0"
 facet-json = "0.42.0"
