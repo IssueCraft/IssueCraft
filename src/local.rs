@@ -404,6 +404,7 @@ impl ExecutionEngine for Database {
                     });
                 }
                 let comment_info = CommentInfo {
+                    issue: issue_id,
                     author: UserId(REDB_DEFAULT_USER.to_string()),
                     content,
                     created_at: time::UtcDateTime::now(),

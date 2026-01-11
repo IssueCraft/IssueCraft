@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use facet::Facet;
 use facet_json::{DeserializeError, JsonError};
-use issuecraft_ql::{CloseReason, ExecutionEngine, ExecutionResult, ProjectId, UserId};
+use issuecraft_ql::{CloseReason, ExecutionEngine, ExecutionResult, IssueId, ProjectId, UserId};
 
 #[derive(thiserror::Error, Debug)]
 pub enum ClientError {
@@ -67,6 +67,7 @@ impl IssueInfo {
 
 #[derive(Debug, Clone, Facet)]
 pub struct CommentInfo {
+    pub issue: IssueId,
     pub created_at: time::UtcDateTime,
     pub content: String,
     pub author: UserId,
