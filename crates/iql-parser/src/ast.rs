@@ -1,6 +1,6 @@
 use std::fmt;
 
-use facet::Facet;
+use facet::{Facet, Type};
 use facet_value::Value as FacetValue;
 
 use crate::IqlError;
@@ -358,10 +358,14 @@ pub struct FieldUpdate {
 }
 
 impl FieldUpdate {
-    pub fn apply_to(&self, value: &mut FacetValue) -> Result<(), IqlError> {
+    pub fn apply_to<'a, S: Facet<'a>>(&self, value: &mut FacetValue) -> Result<(), IqlError> {
         let o = value.as_object_mut().unwrap();
-        if !o.contains_key(&self.field) {
-            return Err(IqlError::FieldNotFound(self.field.clone()));
+        if let Type::User(facet::UserType::Struct(s)) = S::SHAPE.ty {
+            if !s.fields.iter().any(|f| f.name == self.field) {
+                return Err(IqlError::FieldNotFound(self.field.clone()));
+            }
+        } else {
+            panic!("Not a struct type");
         }
         o.insert(&self.field, self.value.to_facet());
         Ok(())

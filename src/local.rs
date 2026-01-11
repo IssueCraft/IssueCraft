@@ -109,7 +109,7 @@ impl Database {
         Ok(next as u32)
     }
 
-    fn update(
+    fn update<'a, S: Facet<'a>>(
         &mut self,
         kind: EntityType,
         id: &str,
@@ -117,7 +117,7 @@ impl Database {
     ) -> Result<(), IqlError> {
         let mut item_info: Value = self.get(kind, &id)?;
         for update in updates {
-            update.apply_to(&mut item_info)?;
+            update.apply_to::<S>(&mut item_info)?;
         }
         self.set(kind, &id, &item_info)?;
         Ok(())
@@ -344,15 +344,15 @@ impl ExecutionEngine for Database {
             issuecraft_ql::Statement::Update(UpdateStatement { entity, updates }) => match entity {
                 issuecraft_ql::UpdateTarget::User(id) => Err(IqlError::NotSupported),
                 issuecraft_ql::UpdateTarget::Project(ProjectId(id)) => {
-                    self.update(EntityType::Projects, &id, updates)?;
+                    self.update::<ProjectInfo>(EntityType::Projects, &id, updates)?;
                     Ok(ExecutionResult::one())
                 }
                 issuecraft_ql::UpdateTarget::Issue(IssueId(id)) => {
-                    self.update(EntityType::Issues, &id, updates)?;
+                    self.update::<IssueInfo>(EntityType::Issues, &id, updates)?;
                     Ok(ExecutionResult::one())
                 }
                 issuecraft_ql::UpdateTarget::Comment(CommentId(id)) => {
-                    self.update(EntityType::Comments, &id, updates)?;
+                    self.update::<CommentInfo>(EntityType::Comments, &id, updates)?;
                     Ok(ExecutionResult::one())
                 }
             },
