@@ -82,6 +82,13 @@ impl ExecutionResult {
         }
     }
 
+    pub fn one() -> Self {
+        Self {
+            affected_rows: 1,
+            info: None,
+        }
+    }
+
     pub fn zero() -> Self {
         Self {
             affected_rows: 0,

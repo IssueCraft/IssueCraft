@@ -60,6 +60,7 @@ impl Parser {
             Token::Delete => self.parse_delete(),
             Token::Assign => self.parse_assign(),
             Token::Close => self.parse_close(),
+            Token::Reopen => self.parse_reopen(),
             Token::Comment => self.parse_comment(),
             Token::Eof => Err(ParseError::UnexpectedEof),
             _ => Err(ParseError::UnexpectedToken {
@@ -613,6 +614,15 @@ impl Parser {
         };
 
         Ok(Statement::Close(CloseStatement { issue_id, reason }))
+    }
+
+    fn parse_reopen(&mut self) -> ParseResult<Statement> {
+        self.expect(Token::Reopen)?;
+        self.expect(Token::Issue)?;
+
+        let issue_id = self.parse_issue_id()?;
+
+        Ok(Statement::Reopen(ReopenStatement { issue_id }))
     }
 
     fn parse_comment(&mut self) -> ParseResult<Statement> {

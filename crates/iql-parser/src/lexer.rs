@@ -23,6 +23,9 @@ pub enum Token {
     #[regex("(?i)close")]
     Close,
 
+    #[regex("(?i)reopen")]
+    Reopen,
+
     #[regex("(?i)comment")]
     Comment,
 
@@ -287,6 +290,7 @@ impl Token {
                 | Token::Delete
                 | Token::Assign
                 | Token::Close
+                | Token::Reopen
                 | Token::Comment
                 | Token::From
                 | Token::Where

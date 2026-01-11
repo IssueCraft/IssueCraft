@@ -9,8 +9,8 @@ use issuecraft_core::{
 };
 use issuecraft_ql::{
     CloseStatement, Columns, CommentId, CommentStatement, ComparisonOp, ExecutionEngine,
-    ExecutionResult, FilterExpression, IdHelper, IqlError, IssueId, ProjectId, SelectStatement,
-    UserId, parse_query,
+    ExecutionResult, FilterExpression, IdHelper, IqlError, IssueId, ProjectId, ReopenStatement,
+    SelectStatement, UserId, parse_query,
 };
 use redb::{
     Key, ReadableDatabase, ReadableTable, ReadableTableMetadata, TableDefinition, TableHandle,
@@ -283,7 +283,7 @@ impl ExecutionEngine for Database {
                         display: name,
                     };
                     self.set(TABLE_PROJECTS, &project_id, &project_info)?;
-                    Ok(ExecutionResult::zero())
+                    Ok(ExecutionResult::one())
                 }
                 issuecraft_ql::CreateStatement::Issue {
                     project,
@@ -316,12 +316,12 @@ impl ExecutionEngine for Database {
                         &issue_info,
                     )?;
 
-                    Ok(ExecutionResult::zero())
+                    Ok(ExecutionResult::one())
                 }
             },
             issuecraft_ql::Statement::Update(update_statement) => todo!(),
             issuecraft_ql::Statement::Delete(delete_statement) => todo!(),
-            issuecraft_ql::Statement::Assign(assign_statement) => todo!(),
+            issuecraft_ql::Statement::Assign(assign_statement) => Err(IqlError::NotSupported),
             issuecraft_ql::Statement::Close(CloseStatement { issue_id, reason }) => {
                 let mut issue_info: IssueInfo = self.get(TABLE_ISSUES, &issue_id.str_from_id())?;
                 if let IssueStatus::Closed { reason } = issue_info.status {
@@ -341,7 +341,23 @@ impl ExecutionEngine for Database {
                     },
                 )?;
 
-                Ok(ExecutionResult::zero())
+                Ok(ExecutionResult::one())
+            }
+            issuecraft_ql::Statement::Reopen(ReopenStatement { issue_id }) => {
+                let mut issue_info: IssueInfo = self.get(TABLE_ISSUES, &issue_id.str_from_id())?;
+                if let IssueStatus::Closed { reason } = issue_info.status {
+                    return Ok(ExecutionResult::zero());
+                }
+                self.set(
+                    TABLE_ISSUES,
+                    &issue_id.str_from_id(),
+                    &IssueInfo {
+                        status: IssueStatus::Open,
+                        ..issue_info
+                    },
+                )?;
+
+                Ok(ExecutionResult::one())
             }
             issuecraft_ql::Statement::Comment(CommentStatement { issue_id, content }) => {
                 if !self.exists(TABLE_ISSUES, &issue_id.str_from_id())? {
@@ -353,7 +369,7 @@ impl ExecutionEngine for Database {
                     created_at: time::UtcDateTime::now(),
                 };
                 self.set(TABLE_COMMENTS, "", &comment_info)?;
-                Ok(ExecutionResult::zero())
+                Ok(ExecutionResult::one())
             }
         }
     }

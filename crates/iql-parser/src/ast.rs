@@ -11,6 +11,7 @@ pub enum Statement {
     Delete(DeleteStatement),
     Assign(AssignStatement),
     Close(CloseStatement),
+    Reopen(ReopenStatement),
     Comment(CommentStatement),
 }
 
@@ -408,6 +409,11 @@ impl fmt::Display for CloseReason {
 pub struct CloseStatement {
     pub issue_id: IssueId,
     pub reason: Option<CloseReason>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ReopenStatement {
+    pub issue_id: IssueId,
 }
 
 #[derive(Debug, Clone, PartialEq)]
