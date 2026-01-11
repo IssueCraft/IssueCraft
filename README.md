@@ -9,6 +9,7 @@ A new take on issue tracking.
 - [Planned Features](#planned-features)
 - [Installation](#installation)
 - [Usage](#usage)
+- [Demo](#demo)
 - [Query Language](#query-language)
 
 ## Overview
@@ -37,6 +38,9 @@ Run queries using the cli:
 ```sh
 issuecraft "CREATE PROJECT myproject"
 ```
+
+## Demo
+![IssueCraft Demo](./assets/issuecraft.gif)
 
 ## Query Language
 
