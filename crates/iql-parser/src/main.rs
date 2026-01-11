@@ -55,7 +55,7 @@ fn print_help() {
     println!(
         "  CREATE ISSUE IN <project> WITH TITLE '<title>' [DESCRIPTION '<desc>'] [PRIORITY <level>] [ASSIGNEE <user>] [LABELS [<label>, ...]]"
     );
-    println!("  CREATE COMMENT ON ISSUE <id> WITH '<content>' [AUTHOR <username>]");
+    println!("  CREATE COMMENT ON ISSUE <id> WITH '<content>'");
     println!();
     println!("SELECT Statements:");
     println!("  SELECT * FROM <entity>");

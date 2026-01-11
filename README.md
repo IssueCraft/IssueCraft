@@ -13,7 +13,6 @@ This is also why the repository is private for now, until the project is a bit f
 - [Usage](#usage)
 - [Query Language](#query-language)
 
-
 ## Overview
 
 IssueCraft will be an issue tracker that's meant to be production ready, yet simple to use and extend.
@@ -30,7 +29,7 @@ IssueCraft will be an issue tracker that's meant to be production ready, yet sim
 ## Installation
 
 ```sh
-cargo install --path .
+cargo install issuecraft
 ```
 
 ## Usage
@@ -38,7 +37,7 @@ cargo install --path .
 Run queries using the cli:
 
 ```sh
-issuecraft "CREATE PROJECT myproject"
+issuecraft query "CREATE PROJECT myproject"
 ```
 
 ## Query Language

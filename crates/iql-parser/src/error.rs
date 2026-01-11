@@ -27,6 +27,9 @@ pub enum ParseError {
     #[error("Invalid entity type '{value}' at position {position}")]
     InvalidEntityType { value: String, position: usize },
 
+    #[error("Invalid close reason '{value}' at position {position}")]
+    InvalidCloseReason { value: String, position: usize },
+
     #[error("Invalid priority '{value}' at position {position}")]
     InvalidPriority { value: String, position: usize },
 

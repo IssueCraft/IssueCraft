@@ -100,11 +100,6 @@ pub enum CreateStatement {
         assignee: Option<UserId>,
         labels: Vec<String>,
     },
-    Comment {
-        issue_id: IssueId,
-        content: String,
-        author: Option<UserId>,
-    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -390,10 +385,29 @@ pub struct AssignStatement {
     pub assignee: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Facet, Default)]
+#[repr(C)]
+pub enum CloseReason {
+    #[default]
+    Done,
+    Duplicate,
+    WontFix,
+}
+
+impl fmt::Display for CloseReason {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            CloseReason::Done => write!(f, "DONE"),
+            CloseReason::Duplicate => write!(f, "DUPLICATE"),
+            CloseReason::WontFix => write!(f, "WONTFIX"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct CloseStatement {
     pub issue_id: IssueId,
-    pub reason: Option<String>,
+    pub reason: Option<CloseReason>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -413,10 +427,10 @@ pub enum Priority {
 impl fmt::Display for Priority {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Priority::Critical => write!(f, "critical"),
-            Priority::High => write!(f, "high"),
-            Priority::Medium => write!(f, "medium"),
-            Priority::Low => write!(f, "low"),
+            Priority::Critical => write!(f, "CRITICAL"),
+            Priority::High => write!(f, "HIGH"),
+            Priority::Medium => write!(f, "MEDIUM"),
+            Priority::Low => write!(f, "LOW"),
         }
     }
 }

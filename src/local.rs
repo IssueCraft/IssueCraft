@@ -8,8 +8,9 @@ use issuecraft_core::{
     Client, CommentInfo, IssueInfo, IssueStatus, LoginInfo, Priority, ProjectInfo, UserInfo,
 };
 use issuecraft_ql::{
-    Columns, CommentId, ComparisonOp, ExecutionEngine, ExecutionResult, FilterExpression, IdHelper,
-    IqlError, IssueId, ProjectId, SelectStatement, UserId, parse_query,
+    CloseStatement, Columns, CommentId, CommentStatement, ComparisonOp, ExecutionEngine,
+    ExecutionResult, FilterExpression, IdHelper, IqlError, IssueId, ProjectId, SelectStatement,
+    UserId, parse_query,
 };
 use redb::{
     Key, ReadableDatabase, ReadableTable, ReadableTableMetadata, TableDefinition, TableHandle,
@@ -101,7 +102,7 @@ impl Database {
         Ok(next as u32)
     }
 
-    fn create<V: Facet<'static>>(
+    fn set<V: Facet<'static>>(
         &mut self,
         table_definition: TableDefinition<'_, &str, String>,
         id: &str,
@@ -281,7 +282,7 @@ impl ExecutionEngine for Database {
                         description,
                         display: name,
                     };
-                    self.create(TABLE_PROJECTS, &project_id, &project_info)?;
+                    self.set(TABLE_PROJECTS, &project_id, &project_info)?;
                     Ok(ExecutionResult::zero())
                 }
                 issuecraft_ql::CreateStatement::Issue {
@@ -309,7 +310,7 @@ impl ExecutionEngine for Database {
                             issuecraft_ql::Priority::Low => Priority::Low,
                         }),
                     };
-                    self.create(
+                    self.set(
                         TABLE_ISSUES,
                         &format!("{project}#{issue_number}"),
                         &issue_info,
@@ -317,17 +318,43 @@ impl ExecutionEngine for Database {
 
                     Ok(ExecutionResult::zero())
                 }
-                issuecraft_ql::CreateStatement::Comment {
-                    issue_id,
-                    content,
-                    author,
-                } => todo!(),
             },
             issuecraft_ql::Statement::Update(update_statement) => todo!(),
             issuecraft_ql::Statement::Delete(delete_statement) => todo!(),
             issuecraft_ql::Statement::Assign(assign_statement) => todo!(),
-            issuecraft_ql::Statement::Close(close_statement) => todo!(),
-            issuecraft_ql::Statement::Comment(comment_statement) => todo!(),
+            issuecraft_ql::Statement::Close(CloseStatement { issue_id, reason }) => {
+                let mut issue_info: IssueInfo = self.get(TABLE_ISSUES, &issue_id.str_from_id())?;
+                if let IssueStatus::Closed { reason } = issue_info.status {
+                    return Err(IqlError::IssueAlreadyClosed(
+                        issue_id.str_from_id().to_string(),
+                        reason,
+                    ));
+                }
+                self.set(
+                    TABLE_ISSUES,
+                    &issue_id.str_from_id(),
+                    &IssueInfo {
+                        status: IssueStatus::Closed {
+                            reason: reason.unwrap_or_default(),
+                        },
+                        ..issue_info
+                    },
+                )?;
+
+                Ok(ExecutionResult::zero())
+            }
+            issuecraft_ql::Statement::Comment(CommentStatement { issue_id, content }) => {
+                if !self.exists(TABLE_ISSUES, &issue_id.str_from_id())? {
+                    return Err(IqlError::IssueNotFound(issue_id.str_from_id().to_string()));
+                }
+                let comment_info = CommentInfo {
+                    author: UserId(REDB_DEFAULT_USER.to_string()),
+                    content,
+                    created_at: time::UtcDateTime::now(),
+                };
+                self.set(TABLE_COMMENTS, "", &comment_info)?;
+                Ok(ExecutionResult::zero())
+            }
         }
     }
 }

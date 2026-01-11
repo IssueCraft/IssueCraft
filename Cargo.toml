@@ -35,6 +35,7 @@ anyhow = "1.0.100"
 
 async-trait.workspace = true
 nanoid.workspace = true
+time.workspace = true
 
 facet.workspace = true
 facet-pretty.workspace = true

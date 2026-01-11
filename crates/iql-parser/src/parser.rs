@@ -77,9 +77,8 @@ impl Parser {
             Token::User => self.parse_create_user(),
             Token::Project => self.parse_create_project(),
             Token::Issue => self.parse_create_issue(),
-            Token::Comment => self.parse_create_comment(),
             _ => Err(ParseError::UnexpectedToken {
-                expected: "USER, PROJECT, ISSUE, or COMMENT".to_string(),
+                expected: "USER, PROJECT or ISSUE".to_string(),
                 found: format!("{:?}", self.current()),
                 position: self.get_position_for_error(),
             }),
@@ -272,29 +271,6 @@ impl Parser {
             priority,
             assignee,
             labels,
-        }))
-    }
-
-    fn parse_create_comment(&mut self) -> ParseResult<Statement> {
-        self.expect(Token::Comment)?;
-        self.expect(Token::On)?;
-        self.expect(Token::Issue)?;
-
-        let issue_id = self.parse_issue_id()?;
-
-        self.expect(Token::With)?;
-
-        let content = self.parse_string_value("CONTENT")?;
-
-        let mut author = None;
-        if self.match_token(&Token::Author) {
-            author = Some(UserId(self.parse_identifier("AUTHOR")?));
-        }
-
-        Ok(Statement::Create(CreateStatement::Comment {
-            issue_id,
-            content,
-            author,
         }))
     }
 
@@ -631,7 +607,7 @@ impl Parser {
         let issue_id = self.parse_issue_id()?;
 
         let reason = if self.match_token(&Token::With) {
-            Some(self.parse_string_value("REASON")?)
+            Some(self.parse_close_reason()?)
         } else {
             None
         };
@@ -651,6 +627,22 @@ impl Parser {
         let content = self.parse_string_value("CONTENT")?;
 
         Ok(Statement::Comment(CommentStatement { issue_id, content }))
+    }
+
+    fn parse_close_reason(&mut self) -> ParseResult<CloseReason> {
+        let priority = match self.current() {
+            Token::Duplicate => CloseReason::Duplicate,
+            Token::WontFix => CloseReason::WontFix,
+            Token::Done => CloseReason::Done,
+            _ => {
+                return Err(ParseError::InvalidCloseReason {
+                    value: format!("{:?}", self.current()),
+                    position: self.get_position_for_error(),
+                });
+            }
+        };
+        self.advance();
+        Ok(priority)
     }
 
     fn parse_issue_id(&mut self) -> ParseResult<IssueId> {

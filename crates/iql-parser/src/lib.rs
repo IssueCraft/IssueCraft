@@ -23,10 +23,14 @@ pub enum IqlError {
     NotImplemented,
     #[error("This action is not supported by the chosen backend")]
     NotSupported,
-    #[error("A Project with the name '{0}' already exists")]
+    #[error("A project with the name '{0}' already exists")]
     ProjectAlreadyExists(String),
-    #[error("No Project with the name '{0}' exists")]
+    #[error("No project with the name '{0}' exists")]
     ProjectNotFound(String),
+    #[error("No issue with the name '{0}' exists")]
+    IssueNotFound(String),
+    #[error("The issue withe the name '{0}' was already closed. Reason '{1}'")]
+    IssueAlreadyClosed(String, CloseReason),
     #[error("{0}")]
     ImplementationSpecific(String),
 }

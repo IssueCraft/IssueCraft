@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use facet::Facet;
 use facet_json::{DeserializeError, JsonError};
-use issuecraft_ql::{ExecutionEngine, ExecutionResult, ProjectId, UserId};
+use issuecraft_ql::{CloseReason, ExecutionEngine, ExecutionResult, ProjectId, UserId};
 
 #[derive(thiserror::Error, Debug)]
 pub enum ClientError {
@@ -33,14 +33,6 @@ pub struct ProjectInfo {
 
 #[derive(Debug, Clone, Facet)]
 #[repr(C)]
-pub enum CloseReason {
-    Duplicate,
-    WontFix,
-    Fixed,
-}
-
-#[derive(Debug, Clone, Facet)]
-#[repr(C)]
 pub enum IssueStatus {
     Open,
     Assigned,
@@ -65,6 +57,12 @@ pub struct IssueInfo {
     pub project: ProjectId,
     pub priority: Option<Priority>,
     pub assignee: Option<UserId>,
+}
+
+impl IssueInfo {
+    pub fn is_closed(&self) -> bool {
+        matches!(self.status, IssueStatus::Closed { .. })
+    }
 }
 
 #[derive(Debug, Clone, Facet)]

@@ -124,14 +124,21 @@ pub enum Token {
     #[regex("(?i)assignee")]
     Assignee,
 
-    #[regex("(?i)author")]
-    Author,
-
     #[regex("(?i)labels")]
     Labels,
 
     #[regex("(?i)owner")]
     Owner,
+
+    // ========== Priority Levels ==========
+    #[regex("(?i)duplicate")]
+    Duplicate,
+
+    #[regex("(?i)wontfix")]
+    WontFix,
+
+    #[regex("(?i)done")]
+    Done,
 
     // ========== Priority Levels ==========
     #[regex("(?i)critical")]
@@ -313,7 +320,6 @@ impl Token {
                 | Token::Description
                 | Token::Priority
                 | Token::Assignee
-                | Token::Author
                 | Token::Labels
                 | Token::Owner
                 | Token::Critical
@@ -339,7 +345,6 @@ impl Token {
             Token::Description => Some("description".to_string()),
             Token::Priority => Some("priority".to_string()),
             Token::Assignee => Some("assignee".to_string()),
-            Token::Author => Some("author".to_string()),
             Token::Labels => Some("labels".to_string()),
             Token::Owner => Some("owner".to_string()),
             Token::User => Some("user".to_string()),
