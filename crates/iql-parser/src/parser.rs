@@ -499,12 +499,12 @@ impl Parser {
             Token::User => {
                 self.advance();
                 let username = self.parse_identifier("USERNAME")?;
-                UpdateTarget::User(username)
+                UpdateTarget::User(UserId(username))
             }
             Token::Project => {
                 self.advance();
                 let project = self.parse_identifier("PROJECT")?;
-                UpdateTarget::Project(project)
+                UpdateTarget::Project(ProjectId(project))
             }
             Token::Issue => {
                 self.advance();
@@ -513,8 +513,8 @@ impl Parser {
             }
             Token::Comment => {
                 self.advance();
-                let id = self.parse_number()? as u64;
-                UpdateTarget::Comment(id)
+                let comment_id = self.parse_identifier("COMMENT")?;
+                UpdateTarget::Comment(CommentId(comment_id))
             }
             _ => {
                 return Err(ParseError::UnexpectedToken {

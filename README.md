@@ -45,8 +45,6 @@ issuecraft query "CREATE PROJECT myproject"
 The IssueCraft cli uses IQL (IssueCraft Query Language) as an interface between you
 and the system.
 
-_Currently only `SELECT`, `CREATE PROJECT` and `CREATE ISSUE` are implemented._
-
 Examples:
 
 - `CREATE PROJECT myproject`

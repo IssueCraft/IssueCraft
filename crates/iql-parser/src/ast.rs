@@ -355,10 +355,10 @@ pub struct UpdateStatement {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum UpdateTarget {
-    User(String),
-    Project(String),
+    User(UserId),
+    Project(ProjectId),
     Issue(IssueId),
-    Comment(u64),
+    Comment(CommentId),
 }
 
 #[derive(Debug, Clone, PartialEq)]

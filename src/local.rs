@@ -10,8 +10,9 @@ use issuecraft_core::{
 use issuecraft_ql::{
     CloseStatement, Columns, CommentId, CommentStatement, ComparisonOp, ExecutionEngine,
     ExecutionResult, FilterExpression, IdHelper, IqlError, IssueId, ProjectId, ReopenStatement,
-    SelectStatement, UserId, parse_query,
+    SelectStatement, UpdateStatement, UserId, parse_query,
 };
+use nanoid::nanoid;
 use redb::{
     Key, ReadableDatabase, ReadableTable, ReadableTableMetadata, TableDefinition, TableHandle,
     TransactionError, backends::InMemoryBackend,
@@ -245,7 +246,6 @@ impl ExecutionEngine for Database {
     async fn execute(&mut self, query: &str) -> Result<ExecutionResult, IqlError> {
         match parse_query(query)? {
             issuecraft_ql::Statement::Select(select_statement) => {
-                println!("Select Statement: {select_statement:#?}");
                 let info = match select_statement.from {
                     issuecraft_ql::EntityType::Users => return Err(IqlError::NotSupported),
                     issuecraft_ql::EntityType::Projects => stringify(
@@ -257,17 +257,13 @@ impl ExecutionEngine for Database {
                     ),
                     issuecraft_ql::EntityType::Comments => stringify(
                         &self
-                            .get_all::<CommentId, CommentInfo>(TABLE_PROJECTS, &select_statement)?,
+                            .get_all::<CommentId, CommentInfo>(TABLE_COMMENTS, &select_statement)?,
                     ),
                 };
                 Ok(ExecutionResult::zero().with_info(&info))
             }
             issuecraft_ql::Statement::Create(create_statement) => match create_statement {
-                issuecraft_ql::CreateStatement::User {
-                    username,
-                    email,
-                    name,
-                } => Err(IqlError::NotSupported),
+                issuecraft_ql::CreateStatement::User { .. } => Err(IqlError::NotSupported),
                 issuecraft_ql::CreateStatement::Project {
                     project_id,
                     name,
@@ -319,9 +315,14 @@ impl ExecutionEngine for Database {
                     Ok(ExecutionResult::one())
                 }
             },
-            issuecraft_ql::Statement::Update(update_statement) => todo!(),
-            issuecraft_ql::Statement::Delete(delete_statement) => todo!(),
-            issuecraft_ql::Statement::Assign(assign_statement) => Err(IqlError::NotSupported),
+            issuecraft_ql::Statement::Update(UpdateStatement { entity, updates }) => match entity {
+                issuecraft_ql::UpdateTarget::User(id) => return Err(IqlError::NotSupported),
+                issuecraft_ql::UpdateTarget::Project(id) => return Err(IqlError::NotSupported),
+                issuecraft_ql::UpdateTarget::Issue(id) => return Err(IqlError::NotSupported),
+                issuecraft_ql::UpdateTarget::Comment(id) => return Err(IqlError::NotSupported),
+            },
+            issuecraft_ql::Statement::Delete(_) => Err(IqlError::NotSupported),
+            issuecraft_ql::Statement::Assign(_) => Err(IqlError::NotSupported),
             issuecraft_ql::Statement::Close(CloseStatement { issue_id, reason }) => {
                 let mut issue_info: IssueInfo = self.get(TABLE_ISSUES, &issue_id.str_from_id())?;
                 if let IssueStatus::Closed { reason } = issue_info.status {
@@ -368,7 +369,7 @@ impl ExecutionEngine for Database {
                     content,
                     created_at: time::UtcDateTime::now(),
                 };
-                self.set(TABLE_COMMENTS, "", &comment_info)?;
+                self.set(TABLE_COMMENTS, &nanoid!(), &comment_info)?;
                 Ok(ExecutionResult::one())
             }
         }
