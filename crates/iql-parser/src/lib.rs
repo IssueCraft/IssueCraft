@@ -507,7 +507,7 @@ mod tests {
         let result = parse_query(query);
         assert!(result.is_ok());
         if let Ok(Statement::Select(select)) = result {
-            assert_eq!(select.columns.len(), 7);
+            assert_eq!(select.columns.count(), 7);
         }
     }
 
@@ -723,7 +723,7 @@ mod tests {
         let result = parse_query(query);
         assert!(result.is_ok());
         if let Ok(Statement::Select(select)) = result {
-            assert_eq!(select.columns.len(), 1);
+            assert_eq!(select.columns.count(), 1);
         }
     }
 

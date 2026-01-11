@@ -84,11 +84,10 @@ impl Database {
             Ok(table
                 .iter()
                 .map_err(to_iql_error)?
-                .find(|entry| match entry {
+                .any(|entry| match entry {
                     Ok(e) => e.0.value() == key,
                     Err(e) => false,
-                })
-                .is_some())
+                }))
         }
     }
 
@@ -115,11 +114,11 @@ impl Database {
         id: &str,
         updates: Vec<FieldUpdate>,
     ) -> Result<(), IqlError> {
-        let mut item_info: Value = self.get(kind, &id)?;
+        let mut item_info: Value = self.get(kind, id)?;
         for update in updates {
             update.apply_to::<S>(&mut item_info)?;
         }
-        self.set(kind, &id, &item_info)?;
+        self.set(kind, id, &item_info)?;
         Ok(())
     }
 
@@ -187,15 +186,15 @@ impl Database {
                         o1.get(&order_by.field.clone()),
                         o2.get(&order_by.field.to_owned()),
                     ) {
-                        (None, None) => return std::cmp::Ordering::Equal,
-                        (Some(_), None) => return std::cmp::Ordering::Greater,
-                        (None, Some(_)) => return std::cmp::Ordering::Less,
+                        (None, None) => std::cmp::Ordering::Equal,
+                        (Some(_), None) => std::cmp::Ordering::Greater,
+                        (None, Some(_)) => std::cmp::Ordering::Less,
                         (Some(v1), Some(v2)) => v1.partial_cmp(v2).unwrap(),
                     }
                 });
             }
 
-            Ok(values
+            values
                 .into_iter()
                 .filter(|(k, v)| match filter {
                     None => true,
@@ -206,7 +205,7 @@ impl Database {
                         .map_err(to_iql_error)
                         .map(|v| Entry { key: k, value: v })
                 })
-                .collect::<Result<Vec<_>, _>>()?)
+                .collect::<Result<Vec<_>, _>>()
         }
     }
 
@@ -225,7 +224,7 @@ impl Database {
                     kind: kind.kind(),
                 })?
                 .value();
-            facet_json::from_str(&info).map_err(|e| to_iql_error(e))
+            facet_json::from_str(&info).map_err(to_iql_error)
         }
     }
 
@@ -360,7 +359,7 @@ impl ExecutionEngine for Database {
             issuecraft_ql::Statement::Assign(_) => Err(IqlError::NotSupported),
             issuecraft_ql::Statement::Close(CloseStatement { issue_id, reason }) => {
                 let mut issue_info: IssueInfo =
-                    self.get(EntityType::Issues, &issue_id.str_from_id())?;
+                    self.get(EntityType::Issues, issue_id.str_from_id())?;
                 if let IssueStatus::Closed { reason } = issue_info.status {
                     return Err(IqlError::IssueAlreadyClosed(
                         issue_id.str_from_id().to_string(),
@@ -369,7 +368,7 @@ impl ExecutionEngine for Database {
                 }
                 self.set(
                     EntityType::Issues,
-                    &issue_id.str_from_id(),
+                    issue_id.str_from_id(),
                     &IssueInfo {
                         status: IssueStatus::Closed {
                             reason: reason.unwrap_or_default(),
@@ -382,13 +381,13 @@ impl ExecutionEngine for Database {
             }
             issuecraft_ql::Statement::Reopen(ReopenStatement { issue_id }) => {
                 let mut issue_info: IssueInfo =
-                    self.get(EntityType::Issues, &issue_id.str_from_id())?;
+                    self.get(EntityType::Issues, issue_id.str_from_id())?;
                 if let IssueStatus::Closed { reason } = issue_info.status {
                     return Ok(ExecutionResult::zero());
                 }
                 self.set(
                     EntityType::Issues,
-                    &issue_id.str_from_id(),
+                    issue_id.str_from_id(),
                     &IssueInfo {
                         status: IssueStatus::Open,
                         ..issue_info
@@ -398,7 +397,7 @@ impl ExecutionEngine for Database {
                 Ok(ExecutionResult::one())
             }
             issuecraft_ql::Statement::Comment(CommentStatement { issue_id, content }) => {
-                if !self.exists(EntityType::Issues, &issue_id.str_from_id())? {
+                if !self.exists(EntityType::Issues, issue_id.str_from_id())? {
                     return Err(IqlError::ItemNotFound {
                         kind: EntityType::Issues.kind(),
                         id: issue_id.str_from_id().to_string(),

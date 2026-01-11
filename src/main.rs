@@ -22,13 +22,11 @@ async fn main() -> anyhow::Result<()> {
     let config = if let Some(config_path) = config {
         let config = tokio::fs::read_to_string(config_path).await?;
         facet_toml::from_str(&config)?
+    } else if default_config_path.exists() {
+        let config = tokio::fs::read_to_string(default_config_path).await?;
+        facet_toml::from_str(&config)?
     } else {
-        if default_config_path.exists() {
-            let config = tokio::fs::read_to_string(default_config_path).await?;
-            facet_toml::from_str(&config)?
-        } else {
-            Config::default()
-        }
+        Config::default()
     };
 
     println!("{}", run_query(&config, &query).await?);

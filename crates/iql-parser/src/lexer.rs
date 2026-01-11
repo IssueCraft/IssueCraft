@@ -266,9 +266,9 @@ fn unescape_string(s: &str) -> String {
 
 pub fn tokenize(input: &str) -> Result<Vec<Token>, String> {
     let mut tokens = Vec::new();
-    let mut lexer = Token::lexer(input);
+    let lexer = Token::lexer(input);
 
-    while let Some(result) = lexer.next() {
+    for result in lexer {
         match result {
             Ok(token) => tokens.push(token),
             Err(err) => return Err(err),

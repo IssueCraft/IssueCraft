@@ -122,7 +122,7 @@ pub enum Columns {
 }
 
 impl Columns {
-    pub fn len(&self) -> usize {
+    pub fn count(&self) -> usize {
         match self {
             Columns::All => usize::MAX,
             Columns::Named(cols) => cols.len(),
@@ -337,7 +337,7 @@ impl UpdateTarget {
             UpdateTarget::User(UserId(id))
             | UpdateTarget::Project(ProjectId(id))
             | UpdateTarget::Issue(IssueId(id))
-            | UpdateTarget::Comment(CommentId(id)) => &id,
+            | UpdateTarget::Comment(CommentId(id)) => id,
         }
     }
 
@@ -462,7 +462,7 @@ impl IqlValue {
         match self {
             IqlValue::String(s) => facet_value::VString::new(s).into_value(),
             IqlValue::Number(n) => facet_value::VNumber::from_u64(*n as u64).into_value(),
-            IqlValue::Float(f) => facet_value::VNumber::from_f64(*f as f64)
+            IqlValue::Float(f) => facet_value::VNumber::from_f64(*f)
                 .expect("Invalid float value")
                 .into_value(),
             IqlValue::Boolean(b) => {
