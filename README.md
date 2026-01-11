@@ -35,7 +35,7 @@ cargo install issuecraft
 Run queries using the cli:
 
 ```sh
-issuecraft query "CREATE PROJECT myproject"
+issuecraft "CREATE PROJECT myproject"
 ```
 
 ## Query Language

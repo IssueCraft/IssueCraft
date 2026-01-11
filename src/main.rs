@@ -7,10 +7,7 @@ use issuecraft_core::Client;
 use clap::Parser;
 use issuecraft_ql::{ExecutionEngine, ExecutionResult};
 
-use crate::{
-    cli::{Cli, Command},
-    config::Config,
-};
+use crate::{cli::Cli, config::Config};
 
 mod cli;
 mod config;
@@ -18,7 +15,7 @@ mod local;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let Cli { config, command } = Cli::parse();
+    let Cli { config, query } = Cli::parse();
 
     let default_config_path = Path::new(".ic.toml");
 
@@ -34,9 +31,7 @@ async fn main() -> anyhow::Result<()> {
         }
     };
 
-    match command {
-        Command::Query { query } => println!("{}", run_query(&config, &query).await?),
-    }
+    println!("{}", run_query(&config, &query).await?);
 
     Ok(())
 }

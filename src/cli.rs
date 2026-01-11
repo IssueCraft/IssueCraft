@@ -7,11 +7,5 @@ use clap::{Parser, Subcommand};
 pub struct Cli {
     #[arg(short, long, alias = "cfg")]
     pub config: Option<PathBuf>,
-    #[command(subcommand)]
-    pub command: Command,
-}
-
-#[derive(Debug, Subcommand)]
-pub enum Command {
-    Query { query: String },
+    pub query: String,
 }
