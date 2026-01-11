@@ -251,6 +251,7 @@ impl Database {
 }
 
 fn stringify<'a, T: Facet<'a>>(value: &'a T) -> String {
+    let value: Value = facet_json::from_str(&facet_json::to_string(value).unwrap()).unwrap();
     format!("{}", value.pretty())
 }
 

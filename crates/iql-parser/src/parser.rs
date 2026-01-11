@@ -779,13 +779,8 @@ impl Parser {
                 self.advance();
                 Ok(IqlValue::Priority(Priority::Low))
             }
-            Token::Identifier(id) => {
-                let value = IqlValue::Identifier(id.clone());
-                self.advance();
-                Ok(value)
-            }
             _ => Err(ParseError::UnexpectedToken {
-                expected: "value".to_string(),
+                expected: "literal".to_string(),
                 found: format!("{:?}", self.current()),
                 position: self.get_position_for_error(),
             }),

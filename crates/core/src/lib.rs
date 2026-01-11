@@ -20,14 +20,17 @@ pub enum ClientError {
 #[derive(Debug, Clone, Facet)]
 pub struct UserInfo {
     pub name: String,
+    #[facet( skip_serializing_if = Option::is_none)]
     pub display: Option<String>,
     pub email: String,
 }
 
 #[derive(Debug, Clone, Facet)]
 pub struct ProjectInfo {
+    #[facet(skip_serializing_if = Option::is_none)]
     pub description: Option<String>,
     pub owner: UserId,
+    #[facet(skip_serializing_if = Option::is_none)]
     pub display: Option<String>,
 }
 
@@ -52,10 +55,13 @@ pub enum Priority {
 #[derive(Debug, Clone, Facet)]
 pub struct IssueInfo {
     pub title: String,
+    #[facet(skip_serializing_if = Option::is_none)]
     pub description: Option<String>,
     pub status: IssueStatus,
     pub project: ProjectId,
+    #[facet(skip_serializing_if = Option::is_none)]
     pub priority: Option<Priority>,
+    #[facet(skip_serializing_if = Option::is_none)]
     pub assignee: Option<UserId>,
 }
 
