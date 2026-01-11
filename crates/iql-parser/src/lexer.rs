@@ -133,7 +133,7 @@ pub enum Token {
     #[regex("(?i)owner")]
     Owner,
 
-    // ========== Priority Levels ==========
+    // ========== Close Reasons ==========
     #[regex("(?i)duplicate")]
     Duplicate,
 

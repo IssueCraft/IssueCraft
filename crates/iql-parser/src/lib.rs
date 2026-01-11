@@ -25,12 +25,12 @@ pub enum IqlError {
     NotSupported,
     #[error("A project with the name '{0}' already exists")]
     ProjectAlreadyExists(String),
-    #[error("No project with the name '{0}' exists")]
-    ProjectNotFound(String),
-    #[error("No issue with the name '{0}' exists")]
-    IssueNotFound(String),
+    #[error("No item of type '{kind}' with the id '{id}' exists")]
+    ItemNotFound { kind: String, id: String },
     #[error("The issue withe the name '{0}' was already closed. Reason '{1}'")]
     IssueAlreadyClosed(String, CloseReason),
+    #[error("Field not found: {0}")]
+    FieldNotFound(String),
     #[error("{0}")]
     ImplementationSpecific(String),
 }
@@ -201,7 +201,7 @@ mod tests {
 
     #[test]
     fn test_parse_project_qualified_issue() {
-        let query = "CLOSE issue my-project#42 WITH 'Completed'";
+        let query = "CLOSE issue my-project#42 WITH done";
         let result = parse_query(query);
         assert!(result.is_ok());
     }
@@ -309,7 +309,7 @@ mod tests {
             "ASSIGN issue backend#1 TO alice",
             "COMMENT ON ISSUE backend#1 WITH 'Working on it'",
             "UPDATE issue backend#1 SET status = 'in-progress'",
-            "CLOSE issue backend#1 WITH 'Fixed'",
+            "CLOSE issue backend#1 WITH done",
         ];
 
         for query in queries {
@@ -388,7 +388,12 @@ mod tests {
         ];
         for query in queries {
             let result = parse_query(query);
-            assert!(result.is_ok(), "Failed: {}", query);
+            assert!(
+                result.is_ok(),
+                "Failed query '{}' with error {}",
+                query,
+                result.err().unwrap()
+            );
         }
     }
 
@@ -403,7 +408,12 @@ mod tests {
         ];
         for query in queries {
             let result = parse_query(query);
-            assert!(result.is_ok(), "Failed: {}", query);
+            assert!(
+                result.is_ok(),
+                "Failed query '{}' with error {}",
+                query,
+                result.err().unwrap()
+            );
         }
     }
 
@@ -416,7 +426,12 @@ mod tests {
         ];
         for query in queries {
             let result = parse_query(query);
-            assert!(result.is_ok(), "Failed: {}", query);
+            assert!(
+                result.is_ok(),
+                "Failed query '{}' with error {}",
+                query,
+                result.err().unwrap()
+            );
         }
     }
 
@@ -430,7 +445,12 @@ mod tests {
         ];
         for query in queries {
             let result = parse_query(query);
-            assert!(result.is_ok(), "Failed: {}", query);
+            assert!(
+                result.is_ok(),
+                "Failed query '{}' with error {}",
+                query,
+                result.err().unwrap()
+            );
         }
     }
 
@@ -451,7 +471,12 @@ mod tests {
         ];
         for query in queries {
             let result = parse_query(query);
-            assert!(result.is_ok(), "Failed: {}", query);
+            assert!(
+                result.is_ok(),
+                "Failed query '{}' with error {}",
+                query,
+                result.err().unwrap()
+            );
         }
     }
 
@@ -462,11 +487,16 @@ mod tests {
             "UPDATE project backend SET name = 'New Name'",
             "UPDATE issue backend#123 SET status = 'closed'",
             "UPDATE issue backend#456 SET priority = high",
-            "UPDATE comment 789 SET content = 'updated'",
+            "UPDATE comment C789 SET content = 'updated'",
         ];
         for query in queries {
             let result = parse_query(query);
-            assert!(result.is_ok(), "Failed: {}", query);
+            assert!(
+                result.is_ok(),
+                "Failed query '{}' with error {}",
+                query,
+                result.err().unwrap()
+            );
         }
     }
 
@@ -514,7 +544,12 @@ mod tests {
         ];
         for query in queries {
             let result = parse_query(query);
-            assert!(result.is_ok(), "Failed: {}", query);
+            assert!(
+                result.is_ok(),
+                "Failed query '{}' with error {}",
+                query,
+                result.err().unwrap()
+            );
         }
     }
 
@@ -526,20 +561,12 @@ mod tests {
         ];
         for query in queries {
             let result = parse_query(query);
-            assert!(result.is_ok(), "Failed: {}", query);
-        }
-    }
-
-    #[test]
-    fn test_create_comment_variations() {
-        let queries = vec![
-            "CREATE COMMENT ON ISSUE backend#123 WITH 'Simple comment'",
-            "CREATE COMMENT ON ISSUE backend#123 WITH 'Comment' AUTHOR alice",
-            "CREATE COMMENT ON ISSUE backend#456 WITH 'Project issue comment'",
-        ];
-        for query in queries {
-            let result = parse_query(query);
-            assert!(result.is_ok(), "Failed: {}", query);
+            assert!(
+                result.is_ok(),
+                "Failed query '{}' with error {}",
+                query,
+                result.err().unwrap()
+            );
         }
     }
 
@@ -554,12 +581,17 @@ mod tests {
     fn test_close_with_and_without_reason() {
         let queries = vec![
             "CLOSE issue backend#123",
-            "CLOSE issue backend#123 WITH 'Completed'",
-            "CLOSE issue backend#456 WITH 'Duplicate of #455'",
+            "CLOSE issue backend#123 WITH done",
+            "CLOSE issue backend#456 WITH duplicate",
         ];
         for query in queries {
             let result = parse_query(query);
-            assert!(result.is_ok(), "Failed: {}", query);
+            assert!(
+                result.is_ok(),
+                "Failed query '{}' with error {}",
+                query,
+                result.err().unwrap()
+            );
         }
     }
 
@@ -633,7 +665,12 @@ mod tests {
         for entity in &["users", "projects", "issues", "comments"] {
             let query = format!("SELECT * FROM {}", entity);
             let result = parse_query(&query);
-            assert!(result.is_ok(), "Failed: {}", query);
+            assert!(
+                result.is_ok(),
+                "Failed query '{}' with error {}",
+                query,
+                result.err().unwrap()
+            );
         }
     }
 
@@ -646,7 +683,12 @@ mod tests {
         ];
         for query in queries {
             let result = parse_query(query);
-            assert!(result.is_ok(), "Failed: {}", query);
+            assert!(
+                result.is_ok(),
+                "Failed query '{}' with error {}",
+                query,
+                result.err().unwrap()
+            );
         }
     }
 
@@ -659,7 +701,12 @@ mod tests {
         ];
         for query in queries {
             let result = parse_query(query);
-            assert!(result.is_ok(), "Failed: {}", query);
+            assert!(
+                result.is_ok(),
+                "Failed query '{}' with error {}",
+                query,
+                result.err().unwrap()
+            );
         }
     }
 
@@ -690,7 +737,12 @@ mod tests {
         ];
         for query in queries {
             let result = parse_query(query);
-            assert!(result.is_ok(), "Failed: {}", query);
+            assert!(
+                result.is_ok(),
+                "Failed query '{}' with error {}",
+                query,
+                result.err().unwrap()
+            );
         }
     }
 

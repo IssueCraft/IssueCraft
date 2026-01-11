@@ -3,6 +3,8 @@ use std::fmt;
 use facet::Facet;
 use facet_value::Value as FacetValue;
 
+use crate::IqlError;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Statement {
     Create(CreateStatement),
@@ -128,12 +130,23 @@ impl Columns {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum EntityType {
     Users,
     Projects,
     Issues,
     Comments,
+}
+
+impl EntityType {
+    pub fn kind(&self) -> String {
+        match self {
+            EntityType::Users => "USER".to_string(),
+            EntityType::Projects => "PROJECT".to_string(),
+            EntityType::Issues => "ISSUE".to_string(),
+            EntityType::Comments => "COMMENT".to_string(),
+        }
+    }
 }
 
 impl fmt::Display for EntityType {
@@ -243,53 +256,26 @@ impl FilterExpression {
         filter_value: &IqlValue,
     ) -> bool {
         match op {
-            ComparisonOp::Equal => {
-                if let Some(converted) = Self::convert_iql_value_to_facet(filter_value) {
-                    field_value == &converted
-                } else {
-                    false
-                }
-            }
-            ComparisonOp::NotEqual => {
-                if let Some(converted) = Self::convert_iql_value_to_facet(filter_value) {
-                    field_value != &converted
-                } else {
-                    true
-                }
-            }
+            ComparisonOp::Equal => field_value == &filter_value.to_facet(),
+            ComparisonOp::NotEqual => field_value != &filter_value.to_facet(),
             ComparisonOp::GreaterThan => {
-                if let Some(converted) = Self::convert_iql_value_to_facet(filter_value) {
-                    field_value.partial_cmp(&converted) == Some(std::cmp::Ordering::Greater)
-                } else {
-                    false
-                }
+                field_value.partial_cmp(&filter_value.to_facet())
+                    == Some(std::cmp::Ordering::Greater)
             }
             ComparisonOp::LessThan => {
-                if let Some(converted) = Self::convert_iql_value_to_facet(filter_value) {
-                    field_value.partial_cmp(&converted) == Some(std::cmp::Ordering::Less)
-                } else {
-                    false
-                }
+                field_value.partial_cmp(&filter_value.to_facet()) == Some(std::cmp::Ordering::Less)
             }
             ComparisonOp::GreaterThanOrEqual => {
-                if let Some(converted) = Self::convert_iql_value_to_facet(filter_value) {
-                    matches!(
-                        field_value.partial_cmp(&converted),
-                        Some(std::cmp::Ordering::Greater | std::cmp::Ordering::Equal)
-                    )
-                } else {
-                    false
-                }
+                matches!(
+                    field_value.partial_cmp(&filter_value.to_facet()),
+                    Some(std::cmp::Ordering::Greater | std::cmp::Ordering::Equal)
+                )
             }
             ComparisonOp::LessThanOrEqual => {
-                if let Some(converted) = Self::convert_iql_value_to_facet(filter_value) {
-                    matches!(
-                        field_value.partial_cmp(&converted),
-                        Some(std::cmp::Ordering::Less | std::cmp::Ordering::Equal)
-                    )
-                } else {
-                    false
-                }
+                matches!(
+                    field_value.partial_cmp(&filter_value.to_facet()),
+                    Some(std::cmp::Ordering::Less | std::cmp::Ordering::Equal)
+                )
             }
             ComparisonOp::Like => {
                 let field_str = field_value.as_string().map(|s| s.as_str()).unwrap_or("");
@@ -304,22 +290,6 @@ impl FilterExpression {
                     false
                 }
             }
-        }
-    }
-
-    fn convert_iql_value_to_facet(iql_value: &IqlValue) -> Option<FacetValue> {
-        match iql_value {
-            IqlValue::String(s) => Some(facet_value::VString::new(s).into_value()),
-            IqlValue::Number(n) => Some(facet_value::VNumber::from_u64(*n as u64).into_value()),
-            IqlValue::Float(f) => Some(facet_value::VNumber::from_f64(*f as f64)?.into_value()),
-            IqlValue::Boolean(b) => Some(if *b {
-                facet_value::Value::TRUE
-            } else {
-                facet_value::Value::FALSE
-            }),
-            IqlValue::Null => Some(facet_value::Value::NULL),
-            IqlValue::Priority(p) => Some(facet_value::VString::new(&p.to_string()).into_value()),
-            IqlValue::Identifier(id) => Some(facet_value::VString::new(id).into_value()),
         }
     }
 }
@@ -361,10 +331,41 @@ pub enum UpdateTarget {
     Comment(CommentId),
 }
 
+impl UpdateTarget {
+    pub fn id(&self) -> &str {
+        match self {
+            UpdateTarget::User(UserId(id))
+            | UpdateTarget::Project(ProjectId(id))
+            | UpdateTarget::Issue(IssueId(id))
+            | UpdateTarget::Comment(CommentId(id)) => &id,
+        }
+    }
+
+    pub fn kind(&self) -> &str {
+        match self {
+            UpdateTarget::User(_) => "USER",
+            UpdateTarget::Project(_) => "PROJECT",
+            UpdateTarget::Issue(_) => "ISSUE",
+            UpdateTarget::Comment(_) => "COMMENT",
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct FieldUpdate {
     pub field: String,
     pub value: IqlValue,
+}
+
+impl FieldUpdate {
+    pub fn apply_to(&self, value: &mut FacetValue) -> Result<(), IqlError> {
+        let o = value.as_object_mut().unwrap();
+        if !o.contains_key(&self.field) {
+            return Err(IqlError::FieldNotFound(self.field.clone()));
+        }
+        o.insert(&self.field, self.value.to_facet());
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -450,6 +451,28 @@ pub enum IqlValue {
     Null,
     Priority(Priority),
     Identifier(String),
+}
+
+impl IqlValue {
+    fn to_facet(&self) -> FacetValue {
+        match self {
+            IqlValue::String(s) => facet_value::VString::new(s).into_value(),
+            IqlValue::Number(n) => facet_value::VNumber::from_u64(*n as u64).into_value(),
+            IqlValue::Float(f) => facet_value::VNumber::from_f64(*f as f64)
+                .expect("Invalid float value")
+                .into_value(),
+            IqlValue::Boolean(b) => {
+                if *b {
+                    facet_value::Value::TRUE
+                } else {
+                    facet_value::Value::FALSE
+                }
+            }
+            IqlValue::Null => facet_value::Value::NULL,
+            IqlValue::Priority(p) => facet_value::VString::new(&p.to_string()).into_value(),
+            IqlValue::Identifier(id) => facet_value::VString::new(id).into_value(),
+        }
+    }
 }
 
 impl fmt::Display for IqlValue {
