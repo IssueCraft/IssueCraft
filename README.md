@@ -4,8 +4,6 @@ A new take on issue tracking.
 
 **ATTENTION: IssueCraft is still in it's infancy and should be considered pre-alpha software**
 
-This is also why the repository is private for now, until the project is a bit further along.
-
 - [Overview](#overview)
 - [Features](#features)
 - [Planned Features](#planned-features)

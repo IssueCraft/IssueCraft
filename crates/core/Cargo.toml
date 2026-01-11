@@ -4,6 +4,7 @@ description = "The core library for IssueCraft, providing essential types and tr
 version.workspace = true
 edition.workspace = true
 license-file.workspace = true
+repository.workspace = true
 
 [dependencies]
 issuecraft-ql.workspace = true
