@@ -7,7 +7,7 @@ pushd "$script_dir/.." >/dev/null || exit 1
 
 cargo build --release
 
-PATH="$(pwd)/../target/release:$PATH"
+PATH="$(pwd)/target/release:$PATH"
 export PATH
 
 mkdir -p ./tmp
