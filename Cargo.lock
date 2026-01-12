@@ -471,7 +471,7 @@ checksum = "a6cb138bb79a146c1bd460005623e142ef0181e3d0219cb493e02f7d08a35695"
 
 [[package]]
 name = "issuecraft"
-version = "0.13.1"
+version = "0.13.2"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -491,7 +491,7 @@ dependencies = [
 
 [[package]]
 name = "issuecraft-core"
-version = "0.13.1"
+version = "0.13.2"
 dependencies = [
  "async-trait",
  "facet",
@@ -503,7 +503,7 @@ dependencies = [
 
 [[package]]
 name = "issuecraft-ql"
-version = "0.13.1"
+version = "0.13.2"
 dependencies = [
  "async-trait",
  "facet",
@@ -516,7 +516,7 @@ dependencies = [
 
 [[package]]
 name = "issuecraft-redb"
-version = "0.13.1"
+version = "0.13.2"
 dependencies = [
  "async-trait",
  "facet",
@@ -532,7 +532,7 @@ dependencies = [
 
 [[package]]
 name = "issuecraft-sdk"
-version = "0.13.1"
+version = "0.13.2"
 
 [[package]]
 name = "itoa"
