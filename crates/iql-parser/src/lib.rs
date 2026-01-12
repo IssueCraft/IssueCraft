@@ -319,16 +319,6 @@ mod tests {
     }
 
     #[test]
-    fn test_empty_labels() {
-        let query = "CREATE ISSUE IN test WITH TITLE 'Test' LABELS []";
-        let result = parse_query(query);
-        assert!(result.is_ok());
-        if let Ok(Statement::Create(CreateStatement::Issue { labels, .. })) = result {
-            assert_eq!(labels.len(), 0);
-        }
-    }
-
-    #[test]
     fn test_string_with_multiple_escapes() {
         let query = r"CREATE ISSUE IN test WITH TITLE 'Line1\nLine2\tTab\rReturn\\Backslash'";
         let result = parse_query(query);

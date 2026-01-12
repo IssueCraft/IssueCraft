@@ -216,7 +216,6 @@ impl Parser {
         let mut description = None;
         let mut priority = None;
         let mut assignee = None;
-        let mut labels = Vec::new();
 
         loop {
             match self.current() {
@@ -236,10 +235,6 @@ impl Parser {
                     self.advance();
                     assignee = Some(UserId(self.parse_identifier("ASSIGNEE_ID")?));
                 }
-                Token::Labels => {
-                    self.advance();
-                    labels = self.parse_labels()?;
-                }
                 Token::Identifier(id) if id.eq_ignore_ascii_case("title") => {
                     self.advance();
                     title = Some(self.parse_string_value("TITLE")?);
@@ -256,10 +251,6 @@ impl Parser {
                     self.advance();
                     assignee = Some(UserId(self.parse_identifier("ASSIGNEE_ID")?));
                 }
-                Token::Identifier(id) if id.eq_ignore_ascii_case("labels") => {
-                    self.advance();
-                    labels = self.parse_labels()?;
-                }
                 _ => break,
             }
         }
@@ -275,7 +266,6 @@ impl Parser {
             description,
             priority,
             assignee,
-            labels,
             kind,
         }))
     }
@@ -715,45 +705,6 @@ impl Parser {
         };
         self.advance();
         Ok(priority)
-    }
-
-    fn parse_labels(&mut self) -> ParseResult<Vec<String>> {
-        self.expect(Token::LeftBracket)?;
-
-        let mut labels = Vec::new();
-
-        if !matches!(self.current(), Token::RightBracket) {
-            loop {
-                let label = match self.current() {
-                    Token::String(s) => {
-                        let label = s.clone();
-                        self.advance();
-                        label
-                    }
-                    Token::Identifier(s) => {
-                        let label = s.clone();
-                        self.advance();
-                        label
-                    }
-                    _ => {
-                        return Err(ParseError::UnexpectedToken {
-                            expected: "string or identifier".to_string(),
-                            found: format!("{:?}", self.current()),
-                            position: self.get_position_for_error(),
-                        });
-                    }
-                };
-                labels.push(label);
-
-                if !self.match_token(&Token::Comma) {
-                    break;
-                }
-            }
-        }
-
-        self.expect(Token::RightBracket)?;
-
-        Ok(labels)
     }
 
     fn parse_value(&mut self) -> ParseResult<IqlValue> {

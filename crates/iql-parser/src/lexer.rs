@@ -133,9 +133,6 @@ pub enum Token {
     #[regex("(?i)assignee")]
     Assignee,
 
-    #[regex("(?i)labels")]
-    Labels,
-
     #[regex("(?i)owner")]
     Owner,
 
@@ -343,7 +340,6 @@ impl Token {
                 | Token::Description
                 | Token::Priority
                 | Token::Assignee
-                | Token::Labels
                 | Token::Owner
                 | Token::Critical
                 | Token::High
@@ -368,7 +364,6 @@ impl Token {
             Token::Description => Some("description".to_string()),
             Token::Priority => Some("priority".to_string()),
             Token::Assignee => Some("assignee".to_string()),
-            Token::Labels => Some("labels".to_string()),
             Token::Owner => Some("owner".to_string()),
             Token::User => Some("user".to_string()),
             Token::Project => Some("project".to_string()),

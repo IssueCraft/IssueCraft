@@ -11,7 +11,6 @@ use crate::{cli::Cli, config::Config};
 
 mod cli;
 mod config;
-mod local;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -25,7 +24,7 @@ async fn main() -> anyhow::Result<()> {
         tokio::fs::create_dir_all(db_folder).await?;
     }
 
-    let mut db = local::Database::new(&local::DatabaseType::File(db_path))?;
+    let mut db = issuecraft_redb::Database::new(&issuecraft_redb::DatabaseType::File(db_path))?;
     println!("{}", run_query(&mut db, &query).await?);
 
     Ok(())

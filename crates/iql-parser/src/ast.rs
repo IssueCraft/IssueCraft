@@ -102,7 +102,6 @@ pub enum CreateStatement {
         description: Option<String>,
         priority: Option<Priority>,
         assignee: Option<UserId>,
-        labels: Vec<String>,
     },
 }
 

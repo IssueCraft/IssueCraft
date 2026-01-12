@@ -1,6 +1,11 @@
 [workspace]
 resolver = "3"
-members = ["crates/core", "crates/sdk", "crates/iql-parser"]
+members = [
+    "crates/core",
+    "crates/sdk",
+    "crates/iql-parser",
+    "crates/storage/redb",
+]
 default-members = ["."]
 
 [workspace.package]
@@ -36,7 +41,6 @@ tokio = { version = "1.49.0", features = ["full"] }
 anyhow = "1.0.100"
 
 async-trait.workspace = true
-nanoid.workspace = true
 time.workspace = true
 
 facet.workspace = true
@@ -49,8 +53,8 @@ facet-value.workspace = true
 issuecraft-core.workspace = true
 issuecraft-sdk.workspace = true
 issuecraft-ql.workspace = true
+issuecraft-redb.workspace = true
 
-redb = "3.1.0"
 directories = "6.0.0"
 shellexpand = { version = "3.1.1", features = ["full"] }
 
@@ -58,6 +62,7 @@ shellexpand = { version = "3.1.1", features = ["full"] }
 issuecraft-core = { version = "0.12.0", path = "crates/core" }
 issuecraft-sdk = { version = "0.12.0", path = "crates/sdk" }
 issuecraft-ql = { version = "0.12.0", path = "crates/iql-parser" }
+issuecraft-redb = { version = "0.12.0", path = "crates/storage/redb" }
 facet = { version = "0.42.0", features = ["time"] }
 facet-pretty = "0.42.0"
 facet-json = "0.42.0"

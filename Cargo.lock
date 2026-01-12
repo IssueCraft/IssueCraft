@@ -1079,9 +1079,8 @@ dependencies = [
  "facet-value",
  "issuecraft-core",
  "issuecraft-ql",
+ "issuecraft-redb",
  "issuecraft-sdk",
- "nanoid",
- "redb",
  "shellexpand",
  "sqlx",
  "time",
@@ -1111,6 +1110,22 @@ dependencies = [
  "logos",
  "regex",
  "thiserror",
+]
+
+[[package]]
+name = "issuecraft-redb"
+version = "0.12.0"
+dependencies = [
+ "async-trait",
+ "facet",
+ "facet-json",
+ "facet-pretty",
+ "facet-value",
+ "issuecraft-core",
+ "issuecraft-ql",
+ "nanoid",
+ "redb",
+ "time",
 ]
 
 [[package]]

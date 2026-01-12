@@ -1,0 +1,22 @@
+[package]
+name = "issuecraft-redb"
+version.workspace = true
+edition.workspace = true
+license-file.workspace = true
+repository.workspace = true
+
+[dependencies]
+async-trait.workspace = true
+time.workspace = true
+
+facet.workspace = true
+facet-pretty.workspace = true
+facet-value.workspace = true
+facet-json.workspace = true
+
+issuecraft-core.workspace = true
+issuecraft-ql.workspace = true
+
+nanoid.workspace = true
+
+redb = "3.1.0"

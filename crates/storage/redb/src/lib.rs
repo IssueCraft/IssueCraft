@@ -1,21 +1,19 @@
 use std::{fmt::Display, path::PathBuf};
 
 use async_trait::async_trait;
-use facet::{Facet, Shape, shape_of};
+use facet::Facet;
 use facet_pretty::FacetPretty;
 use facet_value::{Value, from_value};
-use issuecraft_core::{
-    Client, CommentInfo, IssueInfo, IssueStatus, LoginInfo, Priority, ProjectInfo, UserInfo,
-};
+use issuecraft_core::{CommentInfo, IssueInfo, IssueStatus, Priority, ProjectInfo};
 use issuecraft_ql::{
-    CloseStatement, Columns, CommentId, CommentStatement, ComparisonOp, EntityType,
-    ExecutionEngine, ExecutionResult, FieldUpdate, FilterExpression, IdHelper, IqlError, IssueId,
-    ProjectId, ReopenStatement, SelectStatement, UpdateStatement, UserId, parse_query,
+    CloseStatement, CommentId, CommentStatement, EntityType, ExecutionEngine, ExecutionResult,
+    FieldUpdate, IdHelper, IqlError, IssueId, ProjectId, ReopenStatement, SelectStatement,
+    UpdateStatement, UserId, parse_query,
 };
 use nanoid::nanoid;
 use redb::{
-    Key, ReadableDatabase, ReadableTable, ReadableTableMetadata, TableDefinition, TableHandle,
-    TransactionError, backends::InMemoryBackend,
+    DatabaseError, ReadableDatabase, ReadableTable, TableDefinition, TableHandle,
+    backends::InMemoryBackend,
 };
 
 const REDB_DEFAULT_USER: &str = "redb_local";
@@ -50,7 +48,7 @@ fn get_table<'a>(kind: EntityType) -> TableDefinition<'a, &'a str, String> {
 }
 
 impl Database {
-    pub fn new(typ: &DatabaseType) -> anyhow::Result<Self> {
+    pub fn new(typ: &DatabaseType) -> Result<Self, DatabaseError> {
         match typ {
             DatabaseType::InMemory => {
                 let db = redb::Database::builder().create_with_backend(InMemoryBackend::new())?;
@@ -86,7 +84,7 @@ impl Database {
                 .map_err(to_iql_error)?
                 .any(|entry| match entry {
                     Ok(e) => e.0.value() == key,
-                    Err(e) => false,
+                    Err(_) => false,
                 }))
         }
     }
@@ -142,9 +140,8 @@ impl Database {
 
     fn get_all<K: IdHelper, V: Facet<'static>>(
         &self,
-        kind: EntityType,
         SelectStatement {
-            columns,
+            columns: _,
             from,
             filter,
             order_by,
@@ -154,7 +151,7 @@ impl Database {
     ) -> Result<Vec<Entry<K, V>>, IqlError> {
         let read_txn = self.db.begin_read().map_err(to_iql_error)?;
         {
-            let table_definition = get_table(kind);
+            let table_definition = get_table(*from);
             if !read_txn
                 .list_tables()
                 .unwrap()
@@ -162,7 +159,7 @@ impl Database {
             {
                 return Ok(vec![]);
             }
-            let mut table = read_txn
+            let table = read_txn
                 .open_table(table_definition)
                 .map_err(to_iql_error)?;
             let mut values = table
@@ -227,26 +224,6 @@ impl Database {
             facet_json::from_str(&info).map_err(to_iql_error)
         }
     }
-
-    fn get_keys(&self, kind: EntityType) -> Result<Vec<String>, IqlError> {
-        self.get_keys_as::<String>(kind)
-    }
-
-    fn get_keys_as<T: IdHelper>(&self, kind: EntityType) -> Result<Vec<T>, IqlError> {
-        let read_txn = self.db.begin_read().map_err(to_iql_error)?;
-        {
-            let table_definition = get_table(kind);
-            let table = read_txn
-                .open_table(table_definition)
-                .map_err(to_iql_error)?;
-            table
-                .iter()
-                .map_err(to_iql_error)?
-                .map(|entry| entry.map(|k| T::id_from_str(k.0.value())))
-                .collect::<Result<Vec<_>, _>>()
-                .map_err(to_iql_error)
-        }
-    }
 }
 
 fn stringify<'a, T: Facet<'a>>(value: &'a T) -> String {
@@ -266,20 +243,13 @@ impl ExecutionEngine for Database {
                 let info = match select_statement.from {
                     issuecraft_ql::EntityType::Users => return Err(IqlError::NotSupported),
                     issuecraft_ql::EntityType::Projects => {
-                        stringify(&self.get_all::<ProjectId, ProjectInfo>(
-                            EntityType::Projects,
-                            &select_statement,
-                        )?)
+                        stringify(&self.get_all::<ProjectId, ProjectInfo>(&select_statement)?)
                     }
-                    issuecraft_ql::EntityType::Issues => stringify(
-                        &self
-                            .get_all::<IssueId, IssueInfo>(EntityType::Issues, &select_statement)?,
-                    ),
+                    issuecraft_ql::EntityType::Issues => {
+                        stringify(&self.get_all::<IssueId, IssueInfo>(&select_statement)?)
+                    }
                     issuecraft_ql::EntityType::Comments => {
-                        stringify(&self.get_all::<CommentId, CommentInfo>(
-                            EntityType::Comments,
-                            &select_statement,
-                        )?)
+                        stringify(&self.get_all::<CommentId, CommentInfo>(&select_statement)?)
                     }
                 };
                 Ok(ExecutionResult::zero().with_info(&info))
@@ -290,7 +260,7 @@ impl ExecutionEngine for Database {
                     project_id,
                     name,
                     description,
-                    owner,
+                    owner: _,
                 } => {
                     if self.exists(EntityType::Projects, &project_id)? {
                         return Err(IqlError::ProjectAlreadyExists(project_id));
@@ -310,7 +280,6 @@ impl ExecutionEngine for Database {
                     description,
                     priority,
                     assignee,
-                    labels,
                 } => {
                     if !self.exists(EntityType::Projects, &project)? {
                         return Err(IqlError::ItemNotFound {
@@ -343,7 +312,7 @@ impl ExecutionEngine for Database {
                 }
             },
             issuecraft_ql::Statement::Update(UpdateStatement { entity, updates }) => match entity {
-                issuecraft_ql::UpdateTarget::User(id) => Err(IqlError::NotSupported),
+                issuecraft_ql::UpdateTarget::User(_) => Err(IqlError::NotSupported),
                 issuecraft_ql::UpdateTarget::Project(ProjectId(id)) => {
                     self.update::<ProjectInfo>(EntityType::Projects, &id, updates)?;
                     Ok(ExecutionResult::one())
@@ -360,8 +329,7 @@ impl ExecutionEngine for Database {
             issuecraft_ql::Statement::Delete(_) => Err(IqlError::NotSupported),
             issuecraft_ql::Statement::Assign(_) => Err(IqlError::NotSupported),
             issuecraft_ql::Statement::Close(CloseStatement { issue_id, reason }) => {
-                let mut issue_info: IssueInfo =
-                    self.get(EntityType::Issues, issue_id.str_from_id())?;
+                let issue_info: IssueInfo = self.get(EntityType::Issues, issue_id.str_from_id())?;
                 if let IssueStatus::Closed { reason } = issue_info.status {
                     return Err(IqlError::IssueAlreadyClosed(
                         issue_id.str_from_id().to_string(),
@@ -382,9 +350,8 @@ impl ExecutionEngine for Database {
                 Ok(ExecutionResult::one())
             }
             issuecraft_ql::Statement::Reopen(ReopenStatement { issue_id }) => {
-                let mut issue_info: IssueInfo =
-                    self.get(EntityType::Issues, issue_id.str_from_id())?;
-                if let IssueStatus::Closed { reason } = issue_info.status {
+                let issue_info: IssueInfo = self.get(EntityType::Issues, issue_id.str_from_id())?;
+                if !matches!(issue_info.status, IssueStatus::Closed { .. }) {
                     return Ok(ExecutionResult::zero());
                 }
                 self.set(
