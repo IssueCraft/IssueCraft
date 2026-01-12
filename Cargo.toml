@@ -9,7 +9,7 @@ members = [
 default-members = ["."]
 
 [workspace.package]
-version = "0.12.0"
+version = "0.13.0"
 edition = "2024"
 license-file = "LICENSE"
 repository = "https://github.com/IssueCraft/IssueCraft"
@@ -59,10 +59,10 @@ directories = "6.0.0"
 shellexpand = { version = "3.1.1", features = ["full"] }
 
 [workspace.dependencies]
-issuecraft-core = { version = "0.12.0", path = "crates/core" }
-issuecraft-sdk = { version = "0.12.0", path = "crates/sdk" }
-issuecraft-ql = { version = "0.12.0", path = "crates/iql-parser" }
-issuecraft-redb = { version = "0.12.0", path = "crates/storage/redb" }
+issuecraft-core = { version = "0.13.0", path = "crates/core" }
+issuecraft-sdk = { version = "0.13.0", path = "crates/sdk" }
+issuecraft-ql = { version = "0.13.0", path = "crates/iql-parser" }
+issuecraft-redb = { version = "0.13.0", path = "crates/storage/redb" }
 facet = { version = "0.42.0", features = ["time"] }
 facet-pretty = "0.42.0"
 facet-json = "0.42.0"
