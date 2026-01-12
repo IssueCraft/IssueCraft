@@ -40,7 +40,7 @@ issuecraft "CREATE PROJECT myproject"
 ```
 
 ## Demo
-![IssueCraft Demo](./assets/issuecraft.gif)
+![IssueCraft Demo](./assets/demo.gif)
 
 ## Query Language
 

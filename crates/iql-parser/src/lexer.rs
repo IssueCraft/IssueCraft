@@ -47,6 +47,9 @@ pub enum Token {
     #[regex("(?i)in")]
     In,
 
+    #[regex("(?i)of")]
+    Of,
+
     #[regex("(?i)is")]
     Is,
 
@@ -118,6 +121,9 @@ pub enum Token {
     #[regex("(?i)title")]
     Title,
 
+    #[regex("(?i)kind")]
+    Kind,
+
     #[regex("(?i)description")]
     Description,
 
@@ -142,6 +148,19 @@ pub enum Token {
 
     #[regex("(?i)done")]
     Done,
+
+    // ========== Issue Kinds ==========
+    #[regex("(?i)epic")]
+    Epic,
+
+    #[regex("(?i)improvement")]
+    Improvement,
+
+    #[regex("(?i)bug")]
+    Bug,
+
+    #[regex("(?i)task")]
+    Task,
 
     // ========== Priority Levels ==========
     #[regex("(?i)critical")]

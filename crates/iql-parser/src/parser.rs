@@ -197,6 +197,10 @@ impl Parser {
 
     fn parse_create_issue(&mut self) -> ParseResult<Statement> {
         self.expect(Token::Issue)?;
+        self.expect(Token::Of)?;
+        self.expect(Token::Kind)?;
+        let kind = self.parse_issue_kind()?;
+
         self.expect(Token::In)?;
 
         let project = self.parse_identifier("PROJECT_ID")?;
@@ -272,6 +276,7 @@ impl Parser {
             priority,
             assignee,
             labels,
+            kind,
         }))
     }
 
@@ -676,6 +681,23 @@ impl Parser {
             found: format!("{:?}", self.current()),
             position: self.get_position_for_error(),
         })
+    }
+
+    fn parse_issue_kind(&mut self) -> ParseResult<IssueKind> {
+        let kind = match self.current() {
+            Token::Epic => IssueKind::Epic,
+            Token::Improvement => IssueKind::Improvement,
+            Token::Bug => IssueKind::Bug,
+            Token::Task => IssueKind::Task,
+            _ => {
+                return Err(ParseError::InvalidIssueKind {
+                    value: format!("{:?}", self.current()),
+                    position: self.get_position_for_error(),
+                });
+            }
+        };
+        self.advance();
+        Ok(kind)
     }
 
     fn parse_priority(&mut self) -> ParseResult<Priority> {

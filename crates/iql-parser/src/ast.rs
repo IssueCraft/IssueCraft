@@ -98,6 +98,7 @@ pub enum CreateStatement {
     Issue {
         project: String,
         title: String,
+        kind: IssueKind,
         description: Option<String>,
         priority: Option<Priority>,
         assignee: Option<UserId>,
@@ -383,6 +384,15 @@ pub enum DeleteTarget {
     Project(String),
     Issue(IssueId),
     Comment(u64),
+}
+
+#[derive(Debug, Clone, Facet, PartialEq)]
+#[repr(C)]
+pub enum IssueKind {
+    Epic,
+    Improvement,
+    Bug,
+    Task,
 }
 
 #[derive(Debug, Clone, PartialEq)]

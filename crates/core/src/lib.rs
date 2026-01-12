@@ -1,7 +1,9 @@
 use async_trait::async_trait;
 use facet::Facet;
 use facet_json::{DeserializeError, JsonError};
-use issuecraft_ql::{CloseReason, ExecutionEngine, ExecutionResult, IssueId, ProjectId, UserId};
+use issuecraft_ql::{
+    CloseReason, ExecutionEngine, ExecutionResult, IssueId, IssueKind, ProjectId, UserId,
+};
 
 #[derive(thiserror::Error, Debug)]
 pub enum ClientError {
@@ -55,6 +57,7 @@ pub enum Priority {
 #[derive(Debug, Clone, Facet)]
 pub struct IssueInfo {
     pub title: String,
+    pub kind: IssueKind,
     #[facet(skip_serializing_if = Option::is_none)]
     pub description: Option<String>,
     pub status: IssueStatus,

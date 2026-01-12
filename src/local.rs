@@ -305,6 +305,7 @@ impl ExecutionEngine for Database {
                 }
                 issuecraft_ql::CreateStatement::Issue {
                     project,
+                    kind,
                     title,
                     description,
                     priority,
@@ -320,6 +321,7 @@ impl ExecutionEngine for Database {
                     let issue_number = self.get_next_issue_id(&project)?;
                     let issue_info = IssueInfo {
                         title,
+                        kind,
                         description,
                         status: IssueStatus::Open,
                         project: ProjectId(project.clone()),

@@ -33,6 +33,9 @@ pub enum ParseError {
     #[error("Invalid priority '{value}' at position {position}")]
     InvalidPriority { value: String, position: usize },
 
+    #[error("Invalid issue kind '{value}' at position {position}")]
+    InvalidIssueKind { value: String, position: usize },
+
     #[error("Missing clause '{clause}' at position {position}")]
     MissingClause { clause: String, position: usize },
 
