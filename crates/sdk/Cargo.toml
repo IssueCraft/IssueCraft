@@ -7,4 +7,3 @@ license-file.workspace = true
 repository.workspace = true
 
 [dependencies]
-thiserror.workspace = true
