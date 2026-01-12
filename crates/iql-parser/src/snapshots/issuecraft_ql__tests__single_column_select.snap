@@ -1,0 +1,18 @@
+---
+source: crates/iql-parser/src/lib.rs
+expression: "&result"
+---
+Select(
+    SelectStatement {
+        columns: Named(
+            [
+                "title",
+            ],
+        ),
+        from: Issues,
+        filter: None,
+        order_by: None,
+        limit: None,
+        offset: None,
+    },
+)

@@ -1,0 +1,12 @@
+---
+source: crates/iql-parser/src/parser.rs
+expression: "&result"
+---
+Close(
+    CloseStatement {
+        issue_id: IssueId(
+            "backend#789",
+        ),
+        reason: None,
+    },
+)

@@ -1,0 +1,13 @@
+---
+source: crates/iql-parser/src/lexer.rs
+expression: "&tokens"
+---
+[
+    And,
+    Or,
+    Not,
+    In,
+    Is,
+    Like,
+    Eof,
+]

@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use facet::Facet;
 use facet_json::{DeserializeError, JsonError};
 use issuecraft_ql::{
-    CloseReason, ExecutionEngine, ExecutionResult, IssueId, IssueKind, ProjectId, UserId,
+    CloseReason, ExecutionEngine, ExecutionResult, IqlQuery, IssueId, IssueKind, ProjectId, UserId,
 };
 
 #[derive(thiserror::Error, Debug)]
@@ -103,12 +103,12 @@ pub trait Client {
     async fn logout(&mut self) -> Result<(), ClientError> {
         Err(ClientError::NotSupported)
     }
-    async fn query(&mut self, query: &str) -> Result<ExecutionResult, ClientError>;
+    async fn query(&mut self, query: &IqlQuery) -> Result<ExecutionResult, ClientError>;
 }
 
 #[async_trait]
 impl<E: ExecutionEngine + Send> Client for E {
-    async fn query(&mut self, query: &str) -> Result<ExecutionResult, ClientError> {
+    async fn query(&mut self, query: &IqlQuery) -> Result<ExecutionResult, ClientError> {
         let result = self.execute(query).await?;
         Ok(result)
     }

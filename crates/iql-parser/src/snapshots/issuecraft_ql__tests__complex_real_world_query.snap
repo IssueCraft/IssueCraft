@@ -1,0 +1,75 @@
+---
+source: crates/iql-parser/src/lib.rs
+expression: "&result"
+---
+Select(
+    SelectStatement {
+        columns: Named(
+            [
+                "title",
+                "status",
+                "priority",
+                "assignee",
+                "created_at",
+            ],
+        ),
+        from: Issues,
+        filter: Some(
+            And(
+                And(
+                    And(
+                        Or(
+                            Comparison {
+                                field: "priority",
+                                op: Equal,
+                                value: Priority(
+                                    Critical,
+                                ),
+                            },
+                            Comparison {
+                                field: "priority",
+                                op: Equal,
+                                value: Priority(
+                                    High,
+                                ),
+                            },
+                        ),
+                        In {
+                            field: "status",
+                            values: [
+                                String(
+                                    "open",
+                                ),
+                                String(
+                                    "in-progress",
+                                ),
+                            ],
+                        },
+                    ),
+                    IsNotNull(
+                        "assignee",
+                    ),
+                ),
+                Comparison {
+                    field: "project",
+                    op: Equal,
+                    value: String(
+                        "backend",
+                    ),
+                },
+            ),
+        ),
+        order_by: Some(
+            OrderBy {
+                field: "priority",
+                direction: Desc,
+            },
+        ),
+        limit: Some(
+            25,
+        ),
+        offset: Some(
+            0,
+        ),
+    },
+)

@@ -1,0 +1,12 @@
+---
+source: crates/iql-parser/src/lib.rs
+expression: "&result"
+---
+Assign(
+    AssignStatement {
+        issue_id: IssueId(
+            "backend#1",
+        ),
+        assignee: "alice",
+    },
+)

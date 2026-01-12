@@ -1,0 +1,17 @@
+---
+source: crates/iql-parser/src/lexer.rs
+expression: "&tokens"
+---
+[
+    Create,
+    User,
+    Identifier(
+        "alice",
+    ),
+    With,
+    Email,
+    String(
+        "alice@example.com",
+    ),
+    Eof,
+]

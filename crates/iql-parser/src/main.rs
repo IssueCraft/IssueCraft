@@ -53,7 +53,7 @@ fn print_help() {
         "  CREATE PROJECT <project-id> [WITH NAME '<name>' DESCRIPTION '<desc>' OWNER <username>]"
     );
     println!(
-        "  CREATE ISSUE IN <project> WITH TITLE '<title>' [DESCRIPTION '<desc>'] [PRIORITY <level>] [ASSIGNEE <user>] [LABELS [<label>, ...]]"
+        "  CREATE ISSUE IN <project> WITH TITLE '<title>' [DESCRIPTION '<desc>'] [PRIORITY <level>] [ASSIGNEE <user>]"
     );
     println!("  CREATE COMMENT ON ISSUE <id> WITH '<content>'");
     println!();

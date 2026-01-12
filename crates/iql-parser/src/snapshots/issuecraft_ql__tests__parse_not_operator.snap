@@ -1,0 +1,24 @@
+---
+source: crates/iql-parser/src/lib.rs
+expression: "&result"
+---
+Select(
+    SelectStatement {
+        columns: All,
+        from: Issues,
+        filter: Some(
+            Not(
+                Comparison {
+                    field: "status",
+                    op: Equal,
+                    value: String(
+                        "closed",
+                    ),
+                },
+            ),
+        ),
+        order_by: None,
+        limit: None,
+        offset: None,
+    },
+)

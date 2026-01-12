@@ -1,0 +1,12 @@
+---
+source: crates/iql-parser/src/parser.rs
+expression: "&result"
+---
+Comment(
+    CommentStatement {
+        issue_id: IssueId(
+            "backend#101",
+        ),
+        content: "Great work!",
+    },
+)

@@ -13,3 +13,4 @@ facet.workspace = true
 facet-value.workspace = true
 regex.workspace = true
 async-trait.workspace = true
+insta = { version = "1.46.0", features = ["json"] }

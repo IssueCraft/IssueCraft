@@ -52,7 +52,7 @@ impl Parser {
         }
     }
 
-    pub fn parse(&mut self) -> ParseResult<Statement> {
+    pub fn parse(&mut self) -> ParseResult<IqlQuery> {
         match self.current() {
             Token::Create => self.parse_create(),
             Token::Select => self.parse_select(),
@@ -71,7 +71,7 @@ impl Parser {
         }
     }
 
-    fn parse_create(&mut self) -> ParseResult<Statement> {
+    fn parse_create(&mut self) -> ParseResult<IqlQuery> {
         self.expect(Token::Create)?;
 
         match self.current() {
@@ -86,7 +86,7 @@ impl Parser {
         }
     }
 
-    fn parse_create_user(&mut self) -> ParseResult<Statement> {
+    fn parse_create_user(&mut self) -> ParseResult<IqlQuery> {
         self.expect(Token::User)?;
 
         let username = self.parse_identifier("USERNAME")?;
@@ -128,14 +128,14 @@ impl Parser {
             }
         }
 
-        Ok(Statement::Create(CreateStatement::User {
+        Ok(IqlQuery::Create(CreateStatement::User {
             username,
             email,
             name,
         }))
     }
 
-    fn parse_create_project(&mut self) -> ParseResult<Statement> {
+    fn parse_create_project(&mut self) -> ParseResult<IqlQuery> {
         self.expect(Token::Project)?;
 
         let project_id = self.parse_identifier("PROJECT_ID")?;
@@ -187,7 +187,7 @@ impl Parser {
             }
         }
 
-        Ok(Statement::Create(CreateStatement::Project {
+        Ok(IqlQuery::Create(CreateStatement::Project {
             project_id,
             name,
             description,
@@ -195,7 +195,7 @@ impl Parser {
         }))
     }
 
-    fn parse_create_issue(&mut self) -> ParseResult<Statement> {
+    fn parse_create_issue(&mut self) -> ParseResult<IqlQuery> {
         self.expect(Token::Issue)?;
         self.expect(Token::Of)?;
         self.expect(Token::Kind)?;
@@ -260,7 +260,7 @@ impl Parser {
             position: self.get_position_for_error(),
         })?;
 
-        Ok(Statement::Create(CreateStatement::Issue {
+        Ok(IqlQuery::Create(CreateStatement::Issue {
             project,
             title,
             description,
@@ -270,7 +270,7 @@ impl Parser {
         }))
     }
 
-    fn parse_select(&mut self) -> ParseResult<Statement> {
+    fn parse_select(&mut self) -> ParseResult<IqlQuery> {
         self.expect(Token::Select)?;
 
         let columns = self.parse_columns()?;
@@ -304,7 +304,7 @@ impl Parser {
             None
         };
 
-        Ok(Statement::Select(SelectStatement {
+        Ok(IqlQuery::Select(SelectStatement {
             columns,
             from,
             filter,
@@ -477,7 +477,7 @@ impl Parser {
         Ok(OrderBy { field, direction })
     }
 
-    fn parse_update(&mut self) -> ParseResult<Statement> {
+    fn parse_update(&mut self) -> ParseResult<IqlQuery> {
         self.expect(Token::Update)?;
 
         let entity = self.parse_update_target()?;
@@ -486,7 +486,7 @@ impl Parser {
 
         let updates = self.parse_field_updates()?;
 
-        Ok(Statement::Update(UpdateStatement { entity, updates }))
+        Ok(IqlQuery::Update(UpdateStatement { entity, updates }))
     }
 
     fn parse_update_target(&mut self) -> ParseResult<UpdateTarget> {
@@ -541,12 +541,12 @@ impl Parser {
         Ok(updates)
     }
 
-    fn parse_delete(&mut self) -> ParseResult<Statement> {
+    fn parse_delete(&mut self) -> ParseResult<IqlQuery> {
         self.expect(Token::Delete)?;
 
         let entity = self.parse_delete_target()?;
 
-        Ok(Statement::Delete(DeleteStatement { entity }))
+        Ok(IqlQuery::Delete(DeleteStatement { entity }))
     }
 
     fn parse_delete_target(&mut self) -> ParseResult<DeleteTarget> {
@@ -583,7 +583,7 @@ impl Parser {
         Ok(target)
     }
 
-    fn parse_assign(&mut self) -> ParseResult<Statement> {
+    fn parse_assign(&mut self) -> ParseResult<IqlQuery> {
         self.expect(Token::Assign)?;
         self.expect(Token::Issue)?;
 
@@ -593,10 +593,10 @@ impl Parser {
 
         let assignee = self.parse_identifier("ASSIGNEE")?;
 
-        Ok(Statement::Assign(AssignStatement { issue_id, assignee }))
+        Ok(IqlQuery::Assign(AssignStatement { issue_id, assignee }))
     }
 
-    fn parse_close(&mut self) -> ParseResult<Statement> {
+    fn parse_close(&mut self) -> ParseResult<IqlQuery> {
         self.expect(Token::Close)?;
         self.expect(Token::Issue)?;
 
@@ -608,19 +608,19 @@ impl Parser {
             None
         };
 
-        Ok(Statement::Close(CloseStatement { issue_id, reason }))
+        Ok(IqlQuery::Close(CloseStatement { issue_id, reason }))
     }
 
-    fn parse_reopen(&mut self) -> ParseResult<Statement> {
+    fn parse_reopen(&mut self) -> ParseResult<IqlQuery> {
         self.expect(Token::Reopen)?;
         self.expect(Token::Issue)?;
 
         let issue_id = self.parse_issue_id()?;
 
-        Ok(Statement::Reopen(ReopenStatement { issue_id }))
+        Ok(IqlQuery::Reopen(ReopenStatement { issue_id }))
     }
 
-    fn parse_comment(&mut self) -> ParseResult<Statement> {
+    fn parse_comment(&mut self) -> ParseResult<IqlQuery> {
         self.expect(Token::Comment)?;
         self.expect(Token::On)?;
         self.expect(Token::Issue)?;
@@ -631,7 +631,7 @@ impl Parser {
 
         let content = self.parse_string_value("CONTENT")?;
 
-        Ok(Statement::Comment(CommentStatement { issue_id, content }))
+        Ok(IqlQuery::Comment(CommentStatement { issue_id, content }))
     }
 
     fn parse_close_reason(&mut self) -> ParseResult<CloseReason> {
@@ -827,101 +827,87 @@ mod tests {
     #[test]
     fn test_parse_create_user_simple() {
         let mut parser = Parser::new("CREATE USER alice");
-        let result = parser.parse();
-        assert!(result.is_ok());
+        let result = parser.parse().unwrap();
+        insta::assert_debug_snapshot!(&result);
     }
 
     #[test]
     fn test_parse_create_user_with_details() {
         let mut parser = Parser::new("CREATE USER bob WITH EMAIL 'bob@test.com' NAME 'Bob Smith'");
-        let result = parser.parse();
-        assert!(result.is_ok());
-
-        if let Ok(Statement::Create(CreateStatement::User {
-            username,
-            email,
-            name,
-        })) = result
-        {
-            assert_eq!(username, "bob");
-            assert_eq!(email, Some("bob@test.com".to_string()));
-            assert_eq!(name, Some("Bob Smith".to_string()));
-        }
+        let result = parser.parse().unwrap();
+        insta::assert_debug_snapshot!(&result);
     }
 
     #[test]
     fn test_parse_select_all() {
         let mut parser = Parser::new("SELECT * FROM issues");
-        let result = parser.parse();
-        assert!(result.is_ok());
+        let result = parser.parse().unwrap();
+        insta::assert_debug_snapshot!(&result);
     }
 
     #[test]
     fn test_parse_select_columns() {
         let mut parser = Parser::new("SELECT title, status FROM issues");
-        let result = parser.parse();
-        assert!(result.is_ok());
+        let result = parser.parse().unwrap();
+        insta::assert_debug_snapshot!(&result);
     }
 
     #[test]
     fn test_parse_select_with_filter() {
         let mut parser = Parser::new("SELECT * FROM issues WHERE status = 'open'");
-        let result = parser.parse();
-        assert!(result.is_ok());
+        let result = parser.parse().unwrap();
+        insta::assert_debug_snapshot!(&result);
     }
 
     #[test]
     fn test_parse_select_complex_filter() {
         let mut parser =
             Parser::new("SELECT * FROM issues WHERE status = 'open' AND priority = high");
-        let result = parser.parse();
-        assert!(result.is_ok());
+        let result = parser.parse().unwrap();
+        insta::assert_debug_snapshot!(&result);
     }
 
     #[test]
     fn test_parse_update_issue() {
         let mut parser = Parser::new("UPDATE issue backend#123 SET status = 'closed'");
-        let result = parser.parse();
-        assert!(result.is_ok());
+        let result = parser.parse().unwrap();
+        insta::assert_debug_snapshot!(&result);
     }
 
     #[test]
     fn test_parse_assign() {
         let mut parser = Parser::new("ASSIGN issue backend#456 TO alice");
-        let result = parser.parse();
-        assert!(result.is_ok());
+        let result = parser.parse().unwrap();
+        insta::assert_debug_snapshot!(&result);
     }
 
     #[test]
     fn test_parse_close() {
         let mut parser = Parser::new("CLOSE issue backend#789");
-        let result = parser.parse();
-        assert!(result.is_ok());
+        let result = parser.parse().unwrap();
+        insta::assert_debug_snapshot!(&result);
     }
 
     #[test]
     fn test_parse_comment() {
         let mut parser = Parser::new("COMMENT ON issue backend#101 WITH 'Great work!'");
-        let result = parser.parse();
-        assert!(result.is_ok());
+        let result = parser.parse().unwrap();
+        insta::assert_debug_snapshot!(&result);
     }
 
     #[test]
     fn test_parse_issue_id_project() {
         let mut parser = Parser::new("CLOSE issue backend#42");
-        let result = parser.parse();
-        assert!(result.is_ok());
-
-        if let Ok(Statement::Close(stmt)) = result {
-            assert_eq!(stmt.issue_id, IssueId("backend#42".to_string()));
-        }
+        let result = parser.parse().unwrap();
+        insta::assert_debug_snapshot!(&result);
     }
 
     #[test]
     fn test_parse_create_issue() {
-        let mut parser =
-            Parser::new("CREATE ISSUE IN my-project WITH TITLE 'New feature' PRIORITY high");
-        let result = parser.parse();
-        assert!(result.is_ok());
+        let mut parser = Parser::new(
+            "CREATE ISSUE OF KIND bug IN my-project WITH TITLE 'New feature' PRIORITY high",
+        );
+        let result = parser.parse().unwrap();
+        insta::assert_debug_snapshot!(&result);
     }
 }

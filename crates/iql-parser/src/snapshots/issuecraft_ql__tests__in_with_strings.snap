@@ -1,0 +1,29 @@
+---
+source: crates/iql-parser/src/lib.rs
+expression: "&result"
+---
+Select(
+    SelectStatement {
+        columns: All,
+        from: Issues,
+        filter: Some(
+            In {
+                field: "status",
+                values: [
+                    String(
+                        "open",
+                    ),
+                    String(
+                        "in-progress",
+                    ),
+                    String(
+                        "review",
+                    ),
+                ],
+            },
+        ),
+        order_by: None,
+        limit: None,
+        offset: None,
+    },
+)

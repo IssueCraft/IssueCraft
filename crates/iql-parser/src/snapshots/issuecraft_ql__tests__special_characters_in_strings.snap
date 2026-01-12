@@ -1,0 +1,14 @@
+---
+source: crates/iql-parser/src/lib.rs
+expression: "&result"
+---
+Create(
+    Issue {
+        project: "test",
+        title: "Special chars: !@#$%^&*()_+-={}[]|:;<>?,./~`",
+        kind: Bug,
+        description: None,
+        priority: None,
+        assignee: None,
+    },
+)

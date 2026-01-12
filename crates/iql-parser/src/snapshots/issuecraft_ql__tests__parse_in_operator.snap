@@ -1,0 +1,26 @@
+---
+source: crates/iql-parser/src/lib.rs
+expression: "&result"
+---
+Select(
+    SelectStatement {
+        columns: All,
+        from: Issues,
+        filter: Some(
+            In {
+                field: "priority",
+                values: [
+                    Priority(
+                        Critical,
+                    ),
+                    Priority(
+                        High,
+                    ),
+                ],
+            },
+        ),
+        order_by: None,
+        limit: None,
+        offset: None,
+    },
+)

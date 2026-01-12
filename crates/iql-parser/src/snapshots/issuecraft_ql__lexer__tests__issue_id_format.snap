@@ -1,0 +1,14 @@
+---
+source: crates/iql-parser/src/lexer.rs
+expression: "&tokens"
+---
+[
+    Identifier(
+        "backend",
+    ),
+    Hash,
+    Number(
+        123,
+    ),
+    Eof,
+]

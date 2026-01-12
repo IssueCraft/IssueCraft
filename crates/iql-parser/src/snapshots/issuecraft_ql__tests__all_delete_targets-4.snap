@@ -1,0 +1,11 @@
+---
+source: crates/iql-parser/src/lib.rs
+expression: "&result"
+---
+Delete(
+    DeleteStatement {
+        entity: Comment(
+            789,
+        ),
+    },
+)

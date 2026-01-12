@@ -1,0 +1,16 @@
+---
+source: crates/iql-parser/src/lib.rs
+expression: "&result"
+---
+Create(
+    Project {
+        project_id: "my-project",
+        name: Some(
+            "My Project",
+        ),
+        description: Some(
+            "A test project",
+        ),
+        owner: None,
+    },
+)

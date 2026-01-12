@@ -1,0 +1,13 @@
+---
+source: crates/iql-parser/src/lexer.rs
+expression: "&tokens"
+---
+[
+    Equal,
+    NotEqual,
+    GreaterThan,
+    LessThan,
+    GreaterOrEqual,
+    LessOrEqual,
+    Eof,
+]

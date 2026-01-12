@@ -1,0 +1,12 @@
+---
+source: crates/iql-parser/src/lib.rs
+expression: "&result"
+---
+Comment(
+    CommentStatement {
+        issue_id: IssueId(
+            "my-project#202",
+        ),
+        content: "This is a comment",
+    },
+)

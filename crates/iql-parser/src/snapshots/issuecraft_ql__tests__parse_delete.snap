@@ -1,0 +1,13 @@
+---
+source: crates/iql-parser/src/lib.rs
+expression: "&result"
+---
+Delete(
+    DeleteStatement {
+        entity: Issue(
+            IssueId(
+                "my-project#456",
+            ),
+        ),
+    },
+)

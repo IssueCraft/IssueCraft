@@ -1,0 +1,22 @@
+---
+source: crates/iql-parser/src/lib.rs
+expression: "&result"
+---
+Select(
+    SelectStatement {
+        columns: All,
+        from: Issues,
+        filter: Some(
+            Comparison {
+                field: "count",
+                op: LessThanOrEqual,
+                value: Number(
+                    5,
+                ),
+            },
+        ),
+        order_by: None,
+        limit: None,
+        offset: None,
+    },
+)

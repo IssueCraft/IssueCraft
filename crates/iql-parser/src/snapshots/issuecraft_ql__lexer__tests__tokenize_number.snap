@@ -1,0 +1,13 @@
+---
+source: crates/iql-parser/src/lexer.rs
+expression: "&tokens"
+---
+[
+    Number(
+        123,
+    ),
+    Number(
+        -456,
+    ),
+    Eof,
+]

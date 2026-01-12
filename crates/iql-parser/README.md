@@ -9,7 +9,7 @@ system through the IssueCraft CLI.
 CREATE Statements:
   CREATE USER <username> [WITH EMAIL <email> NAME '<name>']
   CREATE PROJECT <project-id> [WITH NAME '<name>' DESCRIPTION '<desc>' OWNER <username>]
-  CREATE ISSUE IN <project> WITH TITLE '<title>' [DESCRIPTION '<desc>'] [PRIORITY <level>] [ASSIGNEE <user>] [LABELS [<label>, ...]]
+  CREATE ISSUE IN <project> WITH TITLE '<title>' [DESCRIPTION '<desc>'] [PRIORITY <level>] [ASSIGNEE <user>]
   CREATE COMMENT ON ISSUE <id> WITH '<content>' [AUTHOR <username>]
 
 SELECT Statements:

@@ -34,5 +34,6 @@ async fn run_query<T: ExecutionEngine>(
     engine: &mut T,
     query: &str,
 ) -> anyhow::Result<ExecutionResult> {
-    Ok(engine.execute(query).await?)
+    let query = issuecraft_ql::parse_query(query)?;
+    Ok(engine.execute(&query).await?)
 }

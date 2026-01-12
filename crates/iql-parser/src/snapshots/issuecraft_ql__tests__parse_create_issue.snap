@@ -1,0 +1,22 @@
+---
+source: crates/iql-parser/src/lib.rs
+expression: "&result"
+---
+Create(
+    Issue {
+        project: "my-project",
+        title: "Bug found",
+        kind: Bug,
+        description: Some(
+            "Something broke",
+        ),
+        priority: Some(
+            High,
+        ),
+        assignee: Some(
+            UserId(
+                "john_doe",
+            ),
+        ),
+    },
+)

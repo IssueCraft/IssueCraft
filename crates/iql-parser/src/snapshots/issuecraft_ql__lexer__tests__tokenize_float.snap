@@ -1,0 +1,13 @@
+---
+source: crates/iql-parser/src/lexer.rs
+expression: "&tokens"
+---
+[
+    Float(
+        3.14,
+    ),
+    Float(
+        -0.5,
+    ),
+    Eof,
+]

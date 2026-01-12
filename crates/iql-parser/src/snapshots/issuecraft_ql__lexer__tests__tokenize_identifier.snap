@@ -1,0 +1,16 @@
+---
+source: crates/iql-parser/src/lexer.rs
+expression: "&tokens"
+---
+[
+    Identifier(
+        "my_var",
+    ),
+    Identifier(
+        "my-project",
+    ),
+    Identifier(
+        "user123",
+    ),
+    Eof,
+]

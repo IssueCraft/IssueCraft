@@ -1,0 +1,53 @@
+---
+source: crates/iql-parser/src/lib.rs
+expression: "&result"
+---
+Select(
+    SelectStatement {
+        columns: Named(
+            [
+                "title",
+                "status",
+                "assignee",
+            ],
+        ),
+        from: Issues,
+        filter: Some(
+            And(
+                Comparison {
+                    field: "project",
+                    op: Equal,
+                    value: String(
+                        "backend",
+                    ),
+                },
+                Or(
+                    Comparison {
+                        field: "priority",
+                        op: Equal,
+                        value: Priority(
+                            High,
+                        ),
+                    },
+                    Comparison {
+                        field: "status",
+                        op: Equal,
+                        value: String(
+                            "critical",
+                        ),
+                    },
+                ),
+            ),
+        ),
+        order_by: Some(
+            OrderBy {
+                field: "created_at",
+                direction: Desc,
+            },
+        ),
+        limit: Some(
+            10,
+        ),
+        offset: None,
+    },
+)

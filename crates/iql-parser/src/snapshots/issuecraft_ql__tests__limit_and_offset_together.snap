@@ -1,0 +1,18 @@
+---
+source: crates/iql-parser/src/lib.rs
+expression: "&result"
+---
+Select(
+    SelectStatement {
+        columns: All,
+        from: Issues,
+        filter: None,
+        order_by: None,
+        limit: Some(
+            50,
+        ),
+        offset: Some(
+            100,
+        ),
+    },
+)

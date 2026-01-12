@@ -6,7 +6,7 @@ use facet_value::Value as FacetValue;
 use crate::IqlError;
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Statement {
+pub enum IqlQuery {
     Create(CreateStatement),
     Select(SelectStatement),
     Update(UpdateStatement),

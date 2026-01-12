@@ -1,0 +1,19 @@
+---
+source: crates/iql-parser/src/lexer.rs
+expression: "&tokens"
+---
+[
+    Select,
+    Star,
+    From,
+    Issues,
+    Where,
+    Identifier(
+        "status",
+    ),
+    Equal,
+    String(
+        "open",
+    ),
+    Eof,
+]

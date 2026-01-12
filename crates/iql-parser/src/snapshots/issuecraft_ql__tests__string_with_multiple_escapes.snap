@@ -1,0 +1,14 @@
+---
+source: crates/iql-parser/src/lib.rs
+expression: "&result"
+---
+Create(
+    Issue {
+        project: "test",
+        title: "Line1\nLine2\tTab\rReturn\\Backslash",
+        kind: Bug,
+        description: None,
+        priority: None,
+        assignee: None,
+    },
+)

@@ -1,0 +1,21 @@
+---
+source: crates/iql-parser/src/lib.rs
+expression: "&result"
+---
+Update(
+    UpdateStatement {
+        entity: Comment(
+            CommentId(
+                "C789",
+            ),
+        ),
+        updates: [
+            FieldUpdate {
+                field: "content",
+                value: String(
+                    "updated",
+                ),
+            },
+        ],
+    },
+)

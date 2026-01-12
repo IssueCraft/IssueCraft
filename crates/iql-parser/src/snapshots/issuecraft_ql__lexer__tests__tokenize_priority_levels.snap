@@ -1,0 +1,11 @@
+---
+source: crates/iql-parser/src/lexer.rs
+expression: "&tokens"
+---
+[
+    Critical,
+    High,
+    Medium,
+    Low,
+    Eof,
+]

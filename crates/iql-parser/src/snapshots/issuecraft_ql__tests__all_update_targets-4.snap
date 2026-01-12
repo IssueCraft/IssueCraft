@@ -1,0 +1,21 @@
+---
+source: crates/iql-parser/src/lib.rs
+expression: "&result"
+---
+Update(
+    UpdateStatement {
+        entity: Issue(
+            IssueId(
+                "backend#456",
+            ),
+        ),
+        updates: [
+            FieldUpdate {
+                field: "priority",
+                value: Priority(
+                    High,
+                ),
+            },
+        ],
+    },
+)

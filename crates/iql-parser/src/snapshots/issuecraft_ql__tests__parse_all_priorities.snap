@@ -1,0 +1,16 @@
+---
+source: crates/iql-parser/src/lib.rs
+expression: "&result"
+---
+Create(
+    Issue {
+        project: "test",
+        title: "Test",
+        kind: Bug,
+        description: None,
+        priority: Some(
+            Critical,
+        ),
+        assignee: None,
+    },
+)

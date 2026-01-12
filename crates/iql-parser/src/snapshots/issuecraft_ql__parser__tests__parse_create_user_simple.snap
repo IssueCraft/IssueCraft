@@ -1,0 +1,11 @@
+---
+source: crates/iql-parser/src/parser.rs
+expression: "&result"
+---
+Create(
+    User {
+        username: "alice",
+        email: None,
+        name: None,
+    },
+)

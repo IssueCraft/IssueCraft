@@ -1,0 +1,13 @@
+---
+source: crates/iql-parser/src/lexer.rs
+expression: "&tokens"
+---
+Ok(
+    [
+        Create,
+        Select,
+        Update,
+        Delete,
+        Eof,
+    ],
+)

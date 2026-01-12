@@ -380,149 +380,104 @@ mod tests {
 
     #[test]
     fn test_tokenize_keywords() {
-        let tokens = tokenize("CREATE SELECT UPDATE DELETE").unwrap();
-        assert_eq!(tokens[0], Token::Create);
-        assert_eq!(tokens[1], Token::Select);
-        assert_eq!(tokens[2], Token::Update);
-        assert_eq!(tokens[3], Token::Delete);
+        let tokens = tokenize("CREATE SELECT UPDATE DELETE");
+        insta::assert_debug_snapshot!(&tokens);
     }
 
     #[test]
     fn test_tokenize_case_insensitive() {
-        let tokens = tokenize("CrEaTe SeLeCt UpDaTe").unwrap();
-        assert_eq!(tokens[0], Token::Create);
-        assert_eq!(tokens[1], Token::Select);
-        assert_eq!(tokens[2], Token::Update);
+        let tokens = tokenize("CrEaTe SeLeCt UpDaTe");
+        insta::assert_debug_snapshot!(&tokens);
     }
 
     #[test]
     fn test_tokenize_string_single_quotes() {
-        let tokens = tokenize("'hello world'").unwrap();
-        assert_eq!(tokens[0], Token::String("hello world".to_string()));
+        let tokens = tokenize("'hello world'");
+        insta::assert_debug_snapshot!(&tokens);
     }
 
     #[test]
     fn test_tokenize_string_double_quotes() {
-        let tokens = tokenize(r#""hello world""#).unwrap();
-        assert_eq!(tokens[0], Token::String("hello world".to_string()));
+        let tokens = tokenize(r#""hello world""#);
+        insta::assert_debug_snapshot!(&tokens);
     }
 
     #[test]
     fn test_tokenize_escaped_string() {
-        let tokens = tokenize(r"'hello\nworld\t!'").unwrap();
-        assert_eq!(tokens[0], Token::String("hello\nworld\t!".to_string()));
+        let tokens = tokenize(r"'hello\nworld\t!'");
+        insta::assert_debug_snapshot!(&tokens);
     }
 
     #[test]
     fn test_tokenize_escaped_quotes() {
         let tokens = tokenize(r#"'She said \'hello\''"#).unwrap();
-        assert_eq!(tokens[0], Token::String("She said 'hello'".to_string()));
+        insta::assert_debug_snapshot!(&tokens);
     }
 
     #[test]
     fn test_tokenize_number() {
         let tokens = tokenize("123 -456").unwrap();
-        assert_eq!(tokens[0], Token::Number(123));
-        assert_eq!(tokens[1], Token::Number(-456));
+        insta::assert_debug_snapshot!(&tokens);
     }
 
     #[test]
     fn test_tokenize_float() {
         let tokens = tokenize("3.14 -0.5").unwrap();
-        assert_eq!(tokens[0], Token::Float(3.14));
-        assert_eq!(tokens[1], Token::Float(-0.5));
+        insta::assert_debug_snapshot!(&tokens);
     }
 
     #[test]
     fn test_tokenize_operators() {
         let tokens = tokenize("= != > < >= <=").unwrap();
-        assert_eq!(tokens[0], Token::Equal);
-        assert_eq!(tokens[1], Token::NotEqual);
-        assert_eq!(tokens[2], Token::GreaterThan);
-        assert_eq!(tokens[3], Token::LessThan);
-        assert_eq!(tokens[4], Token::GreaterOrEqual);
-        assert_eq!(tokens[5], Token::LessOrEqual);
+        insta::assert_debug_snapshot!(&tokens);
     }
 
     #[test]
     fn test_tokenize_punctuation() {
         let tokens = tokenize("* , . # ( ) [ ]").unwrap();
-        assert_eq!(tokens[0], Token::Star);
-        assert_eq!(tokens[1], Token::Comma);
-        assert_eq!(tokens[2], Token::Dot);
-        assert_eq!(tokens[3], Token::Hash);
-        assert_eq!(tokens[4], Token::LeftParen);
-        assert_eq!(tokens[5], Token::RightParen);
-        assert_eq!(tokens[6], Token::LeftBracket);
-        assert_eq!(tokens[7], Token::RightBracket);
+        insta::assert_debug_snapshot!(&tokens);
     }
 
     #[test]
     fn test_tokenize_identifier() {
         let tokens = tokenize("my_var my-project user123").unwrap();
-        assert_eq!(tokens[0], Token::Identifier("my_var".to_string()));
-        assert_eq!(tokens[1], Token::Identifier("my-project".to_string()));
-        assert_eq!(tokens[2], Token::Identifier("user123".to_string()));
+        insta::assert_debug_snapshot!(&tokens);
     }
 
     #[test]
     fn test_tokenize_priority_levels() {
         let tokens = tokenize("critical high medium low").unwrap();
-        assert_eq!(tokens[0], Token::Critical);
-        assert_eq!(tokens[1], Token::High);
-        assert_eq!(tokens[2], Token::Medium);
-        assert_eq!(tokens[3], Token::Low);
+        insta::assert_debug_snapshot!(&tokens);
     }
 
     #[test]
     fn test_tokenize_boolean() {
         let tokens = tokenize("true false TRUE FALSE").unwrap();
-        assert_eq!(tokens[0], Token::True);
-        assert_eq!(tokens[1], Token::False);
-        assert_eq!(tokens[2], Token::True);
-        assert_eq!(tokens[3], Token::False);
+        insta::assert_debug_snapshot!(&tokens);
     }
 
     #[test]
     fn test_tokenize_entity_types() {
         let tokens = tokenize("users projects issues comments").unwrap();
-        assert_eq!(tokens[0], Token::Users);
-        assert_eq!(tokens[1], Token::Projects);
-        assert_eq!(tokens[2], Token::Issues);
-        assert_eq!(tokens[3], Token::Comments);
+        insta::assert_debug_snapshot!(&tokens);
     }
 
     #[test]
     fn test_tokenize_complex_query() {
         let tokens = tokenize("SELECT * FROM issues WHERE status = 'open'").unwrap();
-        assert_eq!(tokens[0], Token::Select);
-        assert_eq!(tokens[1], Token::Star);
-        assert_eq!(tokens[2], Token::From);
-        assert_eq!(tokens[3], Token::Issues);
-        assert_eq!(tokens[4], Token::Where);
-        assert_eq!(tokens[5], Token::Identifier("status".to_string()));
-        assert_eq!(tokens[6], Token::Equal);
-        assert_eq!(tokens[7], Token::String("open".to_string()));
-        assert_eq!(tokens[8], Token::Eof);
+        insta::assert_debug_snapshot!(&tokens);
     }
 
     #[test]
     fn test_tokenize_with_newlines() {
         let tokens = tokenize("SELECT *\nFROM issues\nWHERE status = 'open'").unwrap();
-        assert_eq!(tokens[0], Token::Select);
-        assert_eq!(tokens[1], Token::Star);
-        assert_eq!(tokens[2], Token::From);
-        assert_eq!(tokens[3], Token::Issues);
+        insta::assert_debug_snapshot!(&tokens);
     }
 
     #[test]
     fn test_tokenize_field_names() {
         let tokens = tokenize("email name title description priority").unwrap();
-        assert_eq!(tokens[0], Token::Email);
-        assert_eq!(tokens[1], Token::Name);
-        assert_eq!(tokens[2], Token::Title);
-        assert_eq!(tokens[3], Token::Description);
-        assert_eq!(tokens[4], Token::Priority);
+        insta::assert_debug_snapshot!(&tokens);
     }
 
     #[test]
@@ -567,49 +522,37 @@ mod tests {
     #[test]
     fn test_empty_string() {
         let tokens = tokenize("''").unwrap();
-        assert_eq!(tokens[0], Token::String("".to_string()));
+        insta::assert_debug_snapshot!(&tokens);
     }
 
     #[test]
     fn test_string_with_spaces() {
         let tokens = tokenize("'hello   world'").unwrap();
-        assert_eq!(tokens[0], Token::String("hello   world".to_string()));
+        insta::assert_debug_snapshot!(&tokens);
     }
 
     #[test]
     fn test_hyphenated_identifier() {
         let tokens = tokenize("my-project-name").unwrap();
-        assert_eq!(tokens[0], Token::Identifier("my-project-name".to_string()));
+        insta::assert_debug_snapshot!(&tokens);
     }
 
     #[test]
     fn test_all_logical_operators() {
         let tokens = tokenize("AND OR NOT IN IS LIKE").unwrap();
-        assert_eq!(tokens[0], Token::And);
-        assert_eq!(tokens[1], Token::Or);
-        assert_eq!(tokens[2], Token::Not);
-        assert_eq!(tokens[3], Token::In);
-        assert_eq!(tokens[4], Token::Is);
-        assert_eq!(tokens[5], Token::Like);
+        insta::assert_debug_snapshot!(&tokens);
     }
 
     #[test]
     fn test_complete_create_statement() {
         let input = "CREATE USER alice WITH EMAIL 'alice@example.com'";
         let tokens = tokenize(input).unwrap();
-        assert_eq!(tokens[0], Token::Create);
-        assert_eq!(tokens[1], Token::User);
-        assert_eq!(tokens[2], Token::Identifier("alice".to_string()));
-        assert_eq!(tokens[3], Token::With);
-        assert_eq!(tokens[4], Token::Email);
-        assert_eq!(tokens[5], Token::String("alice@example.com".to_string()));
+        insta::assert_debug_snapshot!(&tokens);
     }
 
     #[test]
     fn test_issue_id_format() {
         let tokens = tokenize("backend#123").unwrap();
-        assert_eq!(tokens[0], Token::Identifier("backend".to_string()));
-        assert_eq!(tokens[1], Token::Hash);
-        assert_eq!(tokens[2], Token::Number(123));
+        insta::assert_debug_snapshot!(&tokens);
     }
 }

@@ -1,0 +1,21 @@
+---
+source: crates/iql-parser/src/lib.rs
+expression: "&result"
+---
+Update(
+    UpdateStatement {
+        entity: Issue(
+            IssueId(
+                "test#100",
+            ),
+        ),
+        updates: [
+            FieldUpdate {
+                field: "score",
+                value: Float(
+                    3.14159,
+                ),
+            },
+        ],
+    },
+)

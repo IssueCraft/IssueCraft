@@ -7,8 +7,8 @@ use facet_value::{Value, from_value};
 use issuecraft_core::{CommentInfo, IssueInfo, IssueStatus, Priority, ProjectInfo};
 use issuecraft_ql::{
     CloseStatement, CommentId, CommentStatement, EntityType, ExecutionEngine, ExecutionResult,
-    FieldUpdate, IdHelper, IqlError, IssueId, ProjectId, ReopenStatement, SelectStatement,
-    UpdateStatement, UserId, parse_query,
+    FieldUpdate, IdHelper, IqlError, IqlQuery, IssueId, ProjectId, ReopenStatement,
+    SelectStatement, UpdateStatement, UserId,
 };
 use nanoid::nanoid;
 use redb::{
@@ -110,7 +110,7 @@ impl Database {
         &mut self,
         kind: EntityType,
         id: &str,
-        updates: Vec<FieldUpdate>,
+        updates: &[FieldUpdate],
     ) -> Result<(), IqlError> {
         let mut item_info: Value = self.get(kind, id)?;
         for update in updates {
@@ -237,9 +237,9 @@ fn to_iql_error<E: Display>(err: E) -> IqlError {
 
 #[async_trait]
 impl ExecutionEngine for Database {
-    async fn execute(&mut self, query: &str) -> Result<ExecutionResult, IqlError> {
-        match parse_query(query)? {
-            issuecraft_ql::Statement::Select(select_statement) => {
+    async fn execute(&mut self, query: &IqlQuery) -> Result<ExecutionResult, IqlError> {
+        match query {
+            issuecraft_ql::IqlQuery::Select(select_statement) => {
                 let info = match select_statement.from {
                     issuecraft_ql::EntityType::Users => return Err(IqlError::NotSupported),
                     issuecraft_ql::EntityType::Projects => {
@@ -254,7 +254,7 @@ impl ExecutionEngine for Database {
                 };
                 Ok(ExecutionResult::zero().with_info(&info))
             }
-            issuecraft_ql::Statement::Create(create_statement) => match create_statement {
+            issuecraft_ql::IqlQuery::Create(create_statement) => match create_statement {
                 issuecraft_ql::CreateStatement::User { .. } => Err(IqlError::NotSupported),
                 issuecraft_ql::CreateStatement::Project {
                     project_id,
@@ -263,12 +263,12 @@ impl ExecutionEngine for Database {
                     owner: _,
                 } => {
                     if self.exists(EntityType::Projects, &project_id)? {
-                        return Err(IqlError::ProjectAlreadyExists(project_id));
+                        return Err(IqlError::ProjectAlreadyExists(project_id.clone()));
                     }
                     let project_info = ProjectInfo {
                         owner: UserId(REDB_DEFAULT_USER.to_string()),
-                        description,
-                        display: name,
+                        description: description.clone(),
+                        display: name.clone(),
                     };
                     self.set(EntityType::Projects, &project_id, &project_info)?;
                     Ok(ExecutionResult::one())
@@ -289,13 +289,15 @@ impl ExecutionEngine for Database {
                     }
                     let issue_number = self.get_next_issue_id(&project)?;
                     let issue_info = IssueInfo {
-                        title,
-                        kind,
-                        description,
+                        title: title.clone(),
+                        kind: kind.clone(),
+                        description: description.clone(),
                         status: IssueStatus::Open,
                         project: ProjectId(project.clone()),
-                        assignee: assignee.or(Some(UserId(REDB_DEFAULT_USER.to_string()))),
-                        priority: priority.map(|p| match p {
+                        assignee: assignee
+                            .clone()
+                            .or(Some(UserId(REDB_DEFAULT_USER.to_string()))),
+                        priority: priority.clone().map(|p| match p {
                             issuecraft_ql::Priority::Critical => Priority::Critical,
                             issuecraft_ql::Priority::High => Priority::High,
                             issuecraft_ql::Priority::Medium => Priority::Medium,
@@ -311,7 +313,7 @@ impl ExecutionEngine for Database {
                     Ok(ExecutionResult::one())
                 }
             },
-            issuecraft_ql::Statement::Update(UpdateStatement { entity, updates }) => match entity {
+            issuecraft_ql::IqlQuery::Update(UpdateStatement { entity, updates }) => match entity {
                 issuecraft_ql::UpdateTarget::User(_) => Err(IqlError::NotSupported),
                 issuecraft_ql::UpdateTarget::Project(ProjectId(id)) => {
                     self.update::<ProjectInfo>(EntityType::Projects, &id, updates)?;
@@ -326,9 +328,9 @@ impl ExecutionEngine for Database {
                     Ok(ExecutionResult::one())
                 }
             },
-            issuecraft_ql::Statement::Delete(_) => Err(IqlError::NotSupported),
-            issuecraft_ql::Statement::Assign(_) => Err(IqlError::NotSupported),
-            issuecraft_ql::Statement::Close(CloseStatement { issue_id, reason }) => {
+            issuecraft_ql::IqlQuery::Delete(_) => Err(IqlError::NotSupported),
+            issuecraft_ql::IqlQuery::Assign(_) => Err(IqlError::NotSupported),
+            issuecraft_ql::IqlQuery::Close(CloseStatement { issue_id, reason }) => {
                 let issue_info: IssueInfo = self.get(EntityType::Issues, issue_id.str_from_id())?;
                 if let IssueStatus::Closed { reason } = issue_info.status {
                     return Err(IqlError::IssueAlreadyClosed(
@@ -341,7 +343,7 @@ impl ExecutionEngine for Database {
                     issue_id.str_from_id(),
                     &IssueInfo {
                         status: IssueStatus::Closed {
-                            reason: reason.unwrap_or_default(),
+                            reason: reason.clone().unwrap_or_default(),
                         },
                         ..issue_info
                     },
@@ -349,7 +351,7 @@ impl ExecutionEngine for Database {
 
                 Ok(ExecutionResult::one())
             }
-            issuecraft_ql::Statement::Reopen(ReopenStatement { issue_id }) => {
+            issuecraft_ql::IqlQuery::Reopen(ReopenStatement { issue_id }) => {
                 let issue_info: IssueInfo = self.get(EntityType::Issues, issue_id.str_from_id())?;
                 if !matches!(issue_info.status, IssueStatus::Closed { .. }) {
                     return Ok(ExecutionResult::zero());
@@ -365,7 +367,7 @@ impl ExecutionEngine for Database {
 
                 Ok(ExecutionResult::one())
             }
-            issuecraft_ql::Statement::Comment(CommentStatement { issue_id, content }) => {
+            issuecraft_ql::IqlQuery::Comment(CommentStatement { issue_id, content }) => {
                 if !self.exists(EntityType::Issues, issue_id.str_from_id())? {
                     return Err(IqlError::ItemNotFound {
                         kind: EntityType::Issues.kind(),
@@ -373,9 +375,9 @@ impl ExecutionEngine for Database {
                     });
                 }
                 let comment_info = CommentInfo {
-                    issue: issue_id,
+                    issue: issue_id.clone(),
                     author: UserId(REDB_DEFAULT_USER.to_string()),
-                    content,
+                    content: content.clone(),
                     created_at: time::UtcDateTime::now(),
                 };
                 self.set(
