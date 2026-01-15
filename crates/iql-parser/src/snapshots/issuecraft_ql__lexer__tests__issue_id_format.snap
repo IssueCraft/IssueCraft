@@ -7,7 +7,7 @@ expression: "&tokens"
         "backend",
     ),
     Hash,
-    Number(
+    UnsignedInteger(
         123,
     ),
     Eof,

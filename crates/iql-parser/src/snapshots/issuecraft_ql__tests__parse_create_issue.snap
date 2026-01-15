@@ -4,7 +4,9 @@ expression: "&result"
 ---
 Create(
     Issue {
-        project: "my-project",
+        project: ProjectId(
+            "my-project",
+        ),
         title: "Bug found",
         kind: Bug,
         description: Some(

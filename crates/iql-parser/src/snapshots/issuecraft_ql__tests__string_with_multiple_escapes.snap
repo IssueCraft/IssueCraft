@@ -4,7 +4,9 @@ expression: "&result"
 ---
 Create(
     Issue {
-        project: "test",
+        project: ProjectId(
+            "test",
+        ),
         title: "Line1\nLine2\tTab\rReturn\\Backslash",
         kind: Bug,
         description: None,

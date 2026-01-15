@@ -4,7 +4,9 @@ expression: "&result"
 ---
 Create(
     Issue {
-        project: "test",
+        project: ProjectId(
+            "test",
+        ),
         title: "Special chars: !@#$%^&*()_+-={}[]|:;<>?,./~`",
         kind: Bug,
         description: None,

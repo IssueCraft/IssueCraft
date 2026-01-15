@@ -4,13 +4,17 @@ expression: "&result"
 ---
 Create(
     Project {
-        project_id: "backend",
+        project_id: ProjectId(
+            "backend",
+        ),
         name: Some(
             "Backend",
         ),
         description: None,
         owner: Some(
-            "alice",
+            UserId(
+                "alice",
+            ),
         ),
     },
 )

@@ -4,7 +4,9 @@ expression: "&result"
 ---
 Create(
     Issue {
-        project: "test",
+        project: ProjectId(
+            "test",
+        ),
         title: "Double quoted string",
         kind: Bug,
         description: None,
