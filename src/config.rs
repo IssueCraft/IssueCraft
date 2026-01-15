@@ -13,8 +13,10 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             db_path: directories::BaseDirs::new()
-                .map(|bd| bd.data_local_dir().to_path_buf())
-                .unwrap_or_else(|| "~/.local/share".into())
+                .map_or_else(
+                    || "~/.local/share".into(),
+                    |bd| bd.data_local_dir().to_path_buf(),
+                )
                 .join("issuecraft")
                 .join(DEFAULT_DB_NAME),
         }

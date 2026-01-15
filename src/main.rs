@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 
 use clap::Parser;
 use issuecraft_core::{Client, ExecutionEngine, ExecutionResult, UserProvider};
+use issuecraft_ql::UserId;
 
 use crate::{cli::Cli, config::Config};
 
@@ -22,7 +23,7 @@ async fn main() -> anyhow::Result<()> {
         tokio::fs::create_dir_all(db_folder).await?;
     }
 
-    let user_provider = issuecraft_core::SingleUserProvider::new("default_user");
+    let user_provider = issuecraft_core::SingleUserProvider::new(UserId::new("default"));
     let mut db = issuecraft_redb::Database::new(&issuecraft_redb::DatabaseType::File(db_path))?;
     println!("{}", run_query(&user_provider, &mut db, &query).await?);
 

@@ -86,19 +86,19 @@ impl Database {
                 .iter()
                 .map_err(to_iql_error)?
                 .any(|entry| match entry {
-                    Ok(e) => e.0.value() == id.deref(),
+                    Ok(e) => e.0.value() == &**id,
                     Err(_) => false,
                 }))
         }
     }
 
-    fn get_next_issue_id(&self, project: &ProjectId) -> Result<u32, BackendError> {
+    fn get_next_issue_id(&self, project: &ProjectId) -> Result<u64, BackendError> {
         if !self.table_exists(TABLE_ISSUES.name())? {
             return Ok(1);
         }
         let read_txn = self.db.begin_read().map_err(to_iql_error)?;
-        let min = format!("{}#", project.to_string());
-        let max = format!("{}#{}", project.to_string(), u32::MAX);
+        let min = format!("{project}#");
+        let max = format!("{project}#{}", u64::MAX);
         let next = read_txn
             .open_table(TABLE_ISSUES)
             .map_err(to_iql_error)?
@@ -106,7 +106,7 @@ impl Database {
             .map_err(to_iql_error)?
             .count()
             + 1;
-        Ok(next as u32)
+        Ok(u64::try_from(next).expect("Maximum issue count exceeded"))
     }
 
     fn delete<ID: EntityId>(&mut self, id: &ID) -> Result<(), BackendError> {
@@ -116,7 +116,7 @@ impl Database {
             let mut table = write_txn
                 .open_table(table_definition)
                 .map_err(to_iql_error)?;
-            table.remove(id.deref()).map_err(to_iql_error)?;
+            table.remove(&**id).map_err(to_iql_error)?;
         }
         write_txn.commit().map_err(to_iql_error)
     }
@@ -206,7 +206,7 @@ impl Database {
                 .open_table(table_definition)
                 .map_err(to_iql_error)?;
             let info_str = facet_json::to_string(info).map_err(to_iql_error)?;
-            table.insert(id.deref(), &info_str).map_err(to_iql_error)?;
+            table.insert(&**id, &info_str).map_err(to_iql_error)?;
         }
         write_txn.commit().map_err(to_iql_error)
     }
@@ -248,8 +248,14 @@ impl Database {
                             .map(|v| (K::from_str(entry.0.value()), v))
                     })
                 })
-                .skip(offset.unwrap_or(0) as usize)
-                .take(limit.unwrap_or(u32::MAX) as usize)
+                .skip(
+                    usize::try_from(offset.unwrap_or(0))
+                        .expect("Number exceeds max supported value"),
+                )
+                .take(
+                    usize::try_from(limit.unwrap_or(u64::MAX))
+                        .expect("Number exceeds max supported value"),
+                )
                 .collect::<Result<Result<Vec<_>, _>, _>>()?
                 .map_err(to_iql_error)?;
             if let Some(order_by) = order_by {
@@ -258,7 +264,7 @@ impl Database {
                     let o2 = b.1.as_object().unwrap();
                     match (
                         o1.get(&order_by.field.clone()),
-                        o2.get(&order_by.field.to_owned()),
+                        o2.get(&order_by.field.clone()),
                     ) {
                         (None, None) => std::cmp::Ordering::Equal,
                         (Some(_), None) => std::cmp::Ordering::Greater,
@@ -295,7 +301,7 @@ impl Database {
                 .open_table(table_definition)
                 .map_err(to_iql_error)?;
             let info = table
-                .get(key.deref())
+                .get(&**key)
                 .map_err(to_iql_error)?
                 .ok_or_else(|| BackendError::ItemNotFound {
                     id: key.to_string(),
@@ -317,6 +323,7 @@ fn to_iql_error<E: Display>(err: E) -> BackendError {
 }
 
 #[async_trait]
+#[allow(clippy::too_many_lines)]
 impl ExecutionEngine for Database {
     async fn execute<UP: UserProvider + Sync>(
         &mut self,
@@ -328,13 +335,13 @@ impl ExecutionEngine for Database {
                 let info = match select_statement.from {
                     issuecraft_ql::EntityType::Users => return Err(BackendError::NotSupported),
                     issuecraft_ql::EntityType::Projects => {
-                        stringify(&self.get_all::<ProjectId>(&select_statement)?)
+                        stringify(&self.get_all::<ProjectId>(select_statement)?)
                     }
                     issuecraft_ql::EntityType::Issues => {
-                        stringify(&self.get_all::<IssueId>(&select_statement)?)
+                        stringify(&self.get_all::<IssueId>(select_statement)?)
                     }
                     issuecraft_ql::EntityType::Comments => {
-                        stringify(&self.get_all::<CommentId>(&select_statement)?)
+                        stringify(&self.get_all::<CommentId>(select_statement)?)
                     }
                 };
                 Ok(ExecutionResult::zero().with_info(&info))
@@ -386,14 +393,14 @@ impl ExecutionEngine for Database {
                         Some(assignee) => assignee.clone(),
                         None => user_provider.get_user("")?,
                     };
-                    let issue_number = self.get_next_issue_id(&project)?;
+                    let issue_number = self.get_next_issue_id(project)?;
                     let issue_info = IssueInfo {
                         title: title.clone(),
                         kind: kind.clone(),
                         description: description.clone(),
                         status: IssueStatus::Open,
-                        project: ProjectId(project.to_string()),
-                        assignee: assignee,
+                        project: project.clone(),
+                        assignee,
                         priority: priority.clone().map(|p| match p {
                             issuecraft_ql::Priority::Critical => Priority::Critical,
                             issuecraft_ql::Priority::High => Priority::High,
@@ -402,7 +409,7 @@ impl ExecutionEngine for Database {
                         }),
                     };
                     self.set(
-                        &IssueId(format!("{}#{issue_number}", project.to_string())),
+                        &IssueId::new(&format!("{project}#{issue_number}")),
                         &issue_info,
                     )?;
 
@@ -435,11 +442,11 @@ impl ExecutionEngine for Database {
                 match entity {
                     DeleteTarget::User(_) => return Err(BackendError::NotSupported),
                     DeleteTarget::Project(project_id) => {
-                        self.delete_project(project_id, &mut result)?
+                        self.delete_project(project_id, &mut result)?;
                     }
                     DeleteTarget::Issue(issue_id) => self.delete_issue(issue_id, &mut result)?,
                     DeleteTarget::Comment(comment_id) => {
-                        self.delete_comment(comment_id, &mut result)?
+                        self.delete_comment(comment_id, &mut result)?;
                     }
                 }
                 Ok(result)
@@ -494,7 +501,7 @@ impl ExecutionEngine for Database {
                 }
                 let comment_info = CommentInfo {
                     issue: issue_id.clone(),
-                    author: UserId(REDB_DEFAULT_USER.to_string()),
+                    author: UserId::from_str(REDB_DEFAULT_USER),
                     content: content.clone(),
                     created_at: time::UtcDateTime::now(),
                 };

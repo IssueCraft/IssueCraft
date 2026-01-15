@@ -96,6 +96,7 @@ pub struct IssueInfo {
 }
 
 impl IssueInfo {
+    #[must_use]
     pub fn is_closed(&self) -> bool {
         matches!(self.status, IssueStatus::Closed { .. })
     }
@@ -115,20 +116,19 @@ pub trait UserProvider {
 }
 
 pub struct SingleUserProvider {
-    pub user: String,
+    pub user: UserId,
 }
 
 impl SingleUserProvider {
-    pub fn new(user: &str) -> Self {
-        Self {
-            user: user.to_string(),
-        }
+    #[must_use]
+    pub fn new(user: UserId) -> Self {
+        Self { user }
     }
 }
 
 impl UserProvider for SingleUserProvider {
     fn get_user(&self, _token: &str) -> Result<UserId, BackendError> {
-        Ok(UserId::from(UserId(self.user.clone())))
+        Ok(self.user.clone())
     }
 }
 
@@ -151,7 +151,7 @@ impl Display for ExecutionResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Affected Rows: {}", self.affected_rows)?;
         if let Some(info) = &self.info {
-            write!(f, "\nInfo: {}", info)?;
+            write!(f, "\nInfo: {info}")?;
         }
         Ok(())
     }
@@ -176,6 +176,7 @@ impl From<&str> for ExecutionResult {
 }
 
 impl ExecutionResult {
+    #[must_use]
     pub fn new(rows: u128) -> Self {
         Self {
             affected_rows: rows,
@@ -183,6 +184,7 @@ impl ExecutionResult {
         }
     }
 
+    #[must_use]
     pub fn one() -> Self {
         Self {
             affected_rows: 1,
@@ -190,6 +192,7 @@ impl ExecutionResult {
         }
     }
 
+    #[must_use]
     pub fn zero() -> Self {
         Self {
             affected_rows: 0,
@@ -201,6 +204,7 @@ impl ExecutionResult {
         self.affected_rows += 1;
     }
 
+    #[must_use]
     pub fn with_info(mut self, info: &str) -> Self {
         self.info = Some(info.to_string());
         self
@@ -245,7 +249,7 @@ pub trait EntityId: Deref<Target = str> + Sized {
 impl EntityId for UserId {
     type EntityType = UserInfo;
     fn from_str(s: &str) -> Self {
-        Self(s.to_string())
+        Self::new(s)
     }
     fn kind() -> EntityType {
         EntityType::Users
@@ -255,7 +259,7 @@ impl EntityId for UserId {
 impl EntityId for ProjectId {
     type EntityType = ProjectInfo;
     fn from_str(s: &str) -> Self {
-        Self(s.to_string())
+        Self::new(s)
     }
     fn kind() -> EntityType {
         EntityType::Projects
@@ -265,7 +269,7 @@ impl EntityId for ProjectId {
 impl EntityId for IssueId {
     type EntityType = IssueInfo;
     fn from_str(s: &str) -> Self {
-        Self(s.to_string())
+        Self::new(s)
     }
     fn kind() -> EntityType {
         EntityType::Issues
@@ -275,7 +279,7 @@ impl EntityId for IssueId {
 impl EntityId for CommentId {
     type EntityType = CommentInfo;
     fn from_str(s: &str) -> Self {
-        Self(s.to_string())
+        Self::new(s)
     }
     fn kind() -> EntityType {
         EntityType::Comments

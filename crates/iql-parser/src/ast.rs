@@ -1,4 +1,7 @@
-use std::{fmt, ops::Deref};
+use std::{
+    fmt::{self, Display},
+    ops::Deref,
+};
 
 use facet::{Facet, Type};
 use facet_value::Value as FacetValue;
@@ -20,7 +23,20 @@ pub enum IqlQuery {
 #[derive(Debug, Clone, Facet, PartialEq)]
 #[repr(C)]
 #[facet(transparent)]
-pub struct UserId(pub String);
+pub struct UserId(String);
+
+impl UserId {
+    #[must_use]
+    pub fn new(s: &str) -> Self {
+        Self(s.to_owned())
+    }
+}
+
+impl Display for UserId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 impl Deref for UserId {
     type Target = str;
@@ -33,7 +49,20 @@ impl Deref for UserId {
 #[derive(Debug, Clone, Facet, PartialEq)]
 #[repr(C)]
 #[facet(transparent)]
-pub struct ProjectId(pub String);
+pub struct ProjectId(String);
+
+impl ProjectId {
+    #[must_use]
+    pub fn new(s: &str) -> Self {
+        Self(s.to_owned())
+    }
+}
+
+impl Display for ProjectId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 impl Deref for ProjectId {
     type Target = str;
@@ -46,7 +75,14 @@ impl Deref for ProjectId {
 #[derive(Debug, Clone, Facet, PartialEq)]
 #[repr(C)]
 #[facet(transparent)]
-pub struct IssueId(pub String);
+pub struct IssueId(String);
+
+impl IssueId {
+    #[must_use]
+    pub fn new(s: &str) -> Self {
+        Self(s.to_owned())
+    }
+}
 
 impl Deref for IssueId {
     type Target = str;
@@ -59,7 +95,14 @@ impl Deref for IssueId {
 #[derive(Debug, Clone, Facet, PartialEq)]
 #[repr(C)]
 #[facet(transparent)]
-pub struct CommentId(pub String);
+pub struct CommentId(String);
+
+impl CommentId {
+    #[must_use]
+    pub fn new(s: &str) -> Self {
+        Self(s.to_owned())
+    }
+}
 
 impl Deref for CommentId {
     type Target = str;
@@ -98,8 +141,8 @@ pub struct SelectStatement {
     pub from: EntityType,
     pub filter: Option<FilterExpression>,
     pub order_by: Option<OrderBy>,
-    pub limit: Option<u32>,
-    pub offset: Option<u32>,
+    pub limit: Option<u64>,
+    pub offset: Option<u64>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -109,6 +152,7 @@ pub enum Columns {
 }
 
 impl Columns {
+    #[must_use]
     pub fn count(&self) -> usize {
         match self {
             Columns::All => usize::MAX,
@@ -155,6 +199,7 @@ pub enum FilterExpression {
 }
 
 impl FilterExpression {
+    #[must_use]
     pub fn matches(&self, id: &str, value: &FacetValue) -> bool {
         match self {
             FilterExpression::Comparison {
@@ -162,9 +207,8 @@ impl FilterExpression {
                 op,
                 value: filter_value,
             } => {
-                let obj = match value.as_object() {
-                    Some(obj) => obj,
-                    None => return false,
+                let Some(obj) = value.as_object() else {
+                    return false;
                 };
 
                 if field == "id" {
@@ -172,9 +216,8 @@ impl FilterExpression {
                     return Self::compare_values(&id_value, op, filter_value);
                 }
 
-                let field_value = match obj.get(field) {
-                    Some(v) => v,
-                    None => return false,
+                let Some(field_value) = obj.get(field) else {
+                    return false;
                 };
 
                 Self::compare_values(field_value, op, filter_value)
@@ -187,14 +230,12 @@ impl FilterExpression {
             }
             FilterExpression::Not(expr) => !expr.matches(id, value),
             FilterExpression::In { field, values } => {
-                let obj = match value.as_object() {
-                    Some(obj) => obj,
-                    None => return false,
+                let Some(obj) = value.as_object() else {
+                    return false;
                 };
 
-                let field_value = match obj.get(field) {
-                    Some(v) => v,
-                    None => return false,
+                let Some(field_value) = obj.get(field) else {
+                    return false;
                 };
 
                 values.iter().any(|filter_val| {
@@ -202,9 +243,8 @@ impl FilterExpression {
                 })
             }
             FilterExpression::IsNull(field) => {
-                let obj = match value.as_object() {
-                    Some(obj) => obj,
-                    None => return false,
+                let Some(obj) = value.as_object() else {
+                    return false;
                 };
 
                 match obj.get(field) {
@@ -213,9 +253,8 @@ impl FilterExpression {
                 }
             }
             FilterExpression::IsNotNull(field) => {
-                let obj = match value.as_object() {
-                    Some(obj) => obj,
-                    None => return false,
+                let Some(obj) = value.as_object() else {
+                    return false;
                 };
 
                 match obj.get(field) {
@@ -254,10 +293,13 @@ impl FilterExpression {
                 )
             }
             ComparisonOp::Like => {
-                let field_str = field_value.as_string().map(|s| s.as_str()).unwrap_or("");
+                let field_str = field_value
+                    .as_string()
+                    .map(facet_value::VString::as_str)
+                    .unwrap_or_default();
                 if let IqlValue::String(pattern) = filter_value {
-                    let pattern = pattern.replace("%", ".*");
-                    if let Ok(regex) = regex::Regex::new(&format!("^{}$", pattern)) {
+                    let pattern = pattern.replace('%', ".*");
+                    if let Ok(regex) = regex::Regex::new(&format!("^{pattern}$")) {
                         regex.is_match(field_str)
                     } else {
                         false
@@ -305,26 +347,6 @@ pub enum UpdateTarget {
     Project(ProjectId),
     Issue(IssueId),
     Comment(CommentId),
-}
-
-impl UpdateTarget {
-    pub fn id(&self) -> &str {
-        match self {
-            UpdateTarget::User(UserId(id))
-            | UpdateTarget::Project(ProjectId(id))
-            | UpdateTarget::Issue(IssueId(id))
-            | UpdateTarget::Comment(CommentId(id)) => id,
-        }
-    }
-
-    pub fn kind(&self) -> &str {
-        match self {
-            UpdateTarget::User(_) => "USER",
-            UpdateTarget::Project(_) => "PROJECT",
-            UpdateTarget::Issue(_) => "ISSUE",
-            UpdateTarget::Comment(_) => "COMMENT",
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -434,7 +456,8 @@ impl fmt::Display for Priority {
 #[derive(Debug, Clone, PartialEq)]
 pub enum IqlValue {
     String(String),
-    Number(i64),
+    Integer(i64),
+    UnsignedInteger(u64),
     Float(f64),
     Boolean(bool),
     Null,
@@ -446,7 +469,8 @@ impl IqlValue {
     fn to_facet(&self) -> FacetValue {
         match self {
             IqlValue::String(s) => facet_value::VString::new(s).into_value(),
-            IqlValue::Number(n) => facet_value::VNumber::from_u64(*n as u64).into_value(),
+            IqlValue::Integer(n) => facet_value::VNumber::from_i64(*n).into_value(),
+            IqlValue::UnsignedInteger(n) => facet_value::VNumber::from_u64(*n).into_value(),
             IqlValue::Float(f) => facet_value::VNumber::from_f64(*f)
                 .expect("Invalid float value")
                 .into_value(),
@@ -467,13 +491,14 @@ impl IqlValue {
 impl fmt::Display for IqlValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            IqlValue::String(s) => write!(f, "'{}'", s),
-            IqlValue::Number(n) => write!(f, "{}", n),
-            IqlValue::Float(fl) => write!(f, "{}", fl),
-            IqlValue::Boolean(b) => write!(f, "{}", b),
+            IqlValue::String(s) => write!(f, "'{s}'"),
+            IqlValue::Integer(n) => write!(f, "{n}"),
+            IqlValue::UnsignedInteger(n) => write!(f, "{n}"),
+            IqlValue::Float(fl) => write!(f, "{fl}"),
+            IqlValue::Boolean(b) => write!(f, "{b}"),
             IqlValue::Null => write!(f, "NULL"),
-            IqlValue::Priority(p) => write!(f, "{}", p),
-            IqlValue::Identifier(id) => write!(f, "{}", id),
+            IqlValue::Priority(p) => write!(f, "{p}"),
+            IqlValue::Identifier(id) => write!(f, "{id}"),
         }
     }
 }

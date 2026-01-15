@@ -20,7 +20,7 @@ fn main() {
             Ok(statement) => {
                 println!("✓ Parse successful!");
                 println!();
-                println!("Query: {}", query);
+                println!("Query: {query}");
                 println!();
                 println!("Parsed AST:");
                 println!("{statement:#?}");
@@ -28,9 +28,9 @@ fn main() {
             Err(error) => {
                 eprintln!("✗ Parse error!");
                 eprintln!();
-                eprintln!("Query: {}", query);
+                eprintln!("Query: {query}");
                 eprintln!();
-                eprintln!("Error: {}", error);
+                eprintln!("Error: {error}");
                 eprintln!();
                 eprintln!("If you need help, run `issuecraft-ql help`");
 

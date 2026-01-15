@@ -1,4 +1,9 @@
-use crate::ast::*;
+use crate::ast::{
+    AssignStatement, CloseReason, CloseStatement, Columns, CommentId, CommentStatement,
+    ComparisonOp, CreateStatement, DeleteStatement, DeleteTarget, EntityType, FieldUpdate,
+    FilterExpression, IqlQuery, IqlValue, IssueId, IssueKind, OrderBy, OrderDirection, Priority,
+    ProjectId, ReopenStatement, SelectStatement, UpdateStatement, UpdateTarget, UserId,
+};
 use crate::error::{ParseError, ParseResult};
 use crate::lexer::{Token, tokenize};
 
@@ -30,13 +35,13 @@ impl Parser {
         }
     }
 
-    fn expect(&mut self, expected: Token) -> ParseResult<()> {
-        if std::mem::discriminant(self.current()) == std::mem::discriminant(&expected) {
+    fn expect(&mut self, expected: &Token) -> ParseResult<()> {
+        if std::mem::discriminant(self.current()) == std::mem::discriminant(expected) {
             self.advance();
             Ok(())
         } else {
             Err(ParseError::UnexpectedToken {
-                expected: format!("{:?}", expected),
+                expected: format!("{expected:?}"),
                 found: format!("{:?}", self.current()),
                 position: self.get_position_for_error(),
             })
@@ -72,7 +77,7 @@ impl Parser {
     }
 
     fn parse_create(&mut self) -> ParseResult<IqlQuery> {
-        self.expect(Token::Create)?;
+        self.expect(&Token::Create)?;
 
         match self.current() {
             Token::User => self.parse_create_user(),
@@ -87,7 +92,7 @@ impl Parser {
     }
 
     fn parse_create_user(&mut self) -> ParseResult<IqlQuery> {
-        self.expect(Token::User)?;
+        self.expect(&Token::User)?;
 
         let username = self.parse_identifier("USERNAME")?;
         let mut email = None;
@@ -136,9 +141,9 @@ impl Parser {
     }
 
     fn parse_create_project(&mut self) -> ParseResult<IqlQuery> {
-        self.expect(Token::Project)?;
+        self.expect(&Token::Project)?;
 
-        let project_id = ProjectId(self.parse_identifier("PROJECT_ID")?);
+        let project_id = ProjectId::new(&self.parse_identifier("PROJECT_ID")?);
         let mut name = None;
         let mut description = None;
         let mut owner = None;
@@ -159,7 +164,7 @@ impl Parser {
                     }
                     Token::Owner => {
                         self.advance();
-                        owner = Some(UserId(self.parse_identifier("OWNER")?));
+                        owner = Some(UserId::new(&self.parse_identifier("OWNER")?));
                     }
                     Token::Identifier(id) if id.eq_ignore_ascii_case("name") => {
                         self.advance();
@@ -173,7 +178,7 @@ impl Parser {
                     }
                     Token::Identifier(id) if id.eq_ignore_ascii_case("owner") => {
                         self.advance();
-                        owner = Some(UserId(self.parse_identifier("OWNER")?));
+                        owner = Some(UserId::new(&self.parse_identifier("OWNER")?));
                         started = false;
                     }
                     _ => break,
@@ -196,14 +201,14 @@ impl Parser {
     }
 
     fn parse_create_issue(&mut self) -> ParseResult<IqlQuery> {
-        self.expect(Token::Issue)?;
-        self.expect(Token::Of)?;
-        self.expect(Token::Kind)?;
+        self.expect(&Token::Issue)?;
+        self.expect(&Token::Of)?;
+        self.expect(&Token::Kind)?;
         let kind = self.parse_issue_kind()?;
 
-        self.expect(Token::In)?;
+        self.expect(&Token::In)?;
 
-        let project = ProjectId(self.parse_identifier("PROJECT_ID")?);
+        let project = ProjectId::new(&self.parse_identifier("PROJECT_ID")?);
 
         if !self.match_token(&Token::With) {
             return Err(ParseError::MissingClause {
@@ -233,7 +238,7 @@ impl Parser {
                 }
                 Token::Assignee => {
                     self.advance();
-                    assignee = Some(UserId(self.parse_identifier("ASSIGNEE_ID")?));
+                    assignee = Some(UserId::new(&self.parse_identifier("ASSIGNEE_ID")?));
                 }
                 Token::Identifier(id) if id.eq_ignore_ascii_case("title") => {
                     self.advance();
@@ -249,7 +254,7 @@ impl Parser {
                 }
                 Token::Identifier(id) if id.eq_ignore_ascii_case("assignee") => {
                     self.advance();
-                    assignee = Some(UserId(self.parse_identifier("ASSIGNEE_ID")?));
+                    assignee = Some(UserId::new(&self.parse_identifier("ASSIGNEE_ID")?));
                 }
                 _ => break,
             }
@@ -271,11 +276,11 @@ impl Parser {
     }
 
     fn parse_select(&mut self) -> ParseResult<IqlQuery> {
-        self.expect(Token::Select)?;
+        self.expect(&Token::Select)?;
 
         let columns = self.parse_columns()?;
 
-        self.expect(Token::From)?;
+        self.expect(&Token::From)?;
 
         let from = self.parse_entity_type()?;
 
@@ -286,20 +291,20 @@ impl Parser {
         };
 
         let order_by = if self.match_token(&Token::Order) {
-            self.expect(Token::By)?;
+            self.expect(&Token::By)?;
             Some(self.parse_order_by()?)
         } else {
             None
         };
 
         let limit = if self.match_token(&Token::Limit) {
-            Some(self.parse_number()? as u32)
+            Some(self.parse_unsigned_integer()?)
         } else {
             None
         };
 
         let offset = if self.match_token(&Token::Offset) {
-            Some(self.parse_number()? as u32)
+            Some(self.parse_unsigned_integer()?)
         } else {
             None
         };
@@ -397,7 +402,7 @@ impl Parser {
 
         if self.match_token(&Token::LeftParen) {
             let expr = self.parse_filter_expression()?;
-            self.expect(Token::RightParen)?;
+            self.expect(&Token::RightParen)?;
             return Ok(expr);
         }
 
@@ -405,23 +410,22 @@ impl Parser {
 
         if self.match_token(&Token::Is) {
             if self.match_token(&Token::Not) {
-                self.expect(Token::Null)?;
+                self.expect(&Token::Null)?;
                 return Ok(FilterExpression::IsNotNull(field));
             } else if self.match_token(&Token::Null) {
                 return Ok(FilterExpression::IsNull(field));
-            } else {
-                return Err(ParseError::UnexpectedToken {
-                    expected: "NULL or NOT NULL".to_string(),
-                    found: format!("{:?}", self.current()),
-                    position: self.get_position_for_error(),
-                });
             }
+            return Err(ParseError::UnexpectedToken {
+                expected: "NULL or NOT NULL".to_string(),
+                found: format!("{:?}", self.current()),
+                position: self.get_position_for_error(),
+            });
         }
 
         if self.match_token(&Token::In) {
-            self.expect(Token::LeftParen)?;
+            self.expect(&Token::LeftParen)?;
             let values = self.parse_value_list()?;
-            self.expect(Token::RightParen)?;
+            self.expect(&Token::RightParen)?;
             return Ok(FilterExpression::In { field, values });
         }
 
@@ -478,11 +482,11 @@ impl Parser {
     }
 
     fn parse_update(&mut self) -> ParseResult<IqlQuery> {
-        self.expect(Token::Update)?;
+        self.expect(&Token::Update)?;
 
         let entity = self.parse_update_target()?;
 
-        self.expect(Token::Set)?;
+        self.expect(&Token::Set)?;
 
         let updates = self.parse_field_updates()?;
 
@@ -494,12 +498,12 @@ impl Parser {
             Token::User => {
                 self.advance();
                 let username = self.parse_identifier("USERNAME")?;
-                UpdateTarget::User(UserId(username))
+                UpdateTarget::User(UserId::new(&username))
             }
             Token::Project => {
                 self.advance();
                 let project = self.parse_identifier("PROJECT")?;
-                UpdateTarget::Project(ProjectId(project))
+                UpdateTarget::Project(ProjectId::new(&project))
             }
             Token::Issue => {
                 self.advance();
@@ -509,7 +513,7 @@ impl Parser {
             Token::Comment => {
                 self.advance();
                 let comment_id = self.parse_identifier("COMMENT")?;
-                UpdateTarget::Comment(CommentId(comment_id))
+                UpdateTarget::Comment(CommentId::new(&comment_id))
             }
             _ => {
                 return Err(ParseError::UnexpectedToken {
@@ -528,7 +532,7 @@ impl Parser {
 
         loop {
             let field = self.parse_identifier("FIELD")?;
-            self.expect(Token::Equal)?;
+            self.expect(&Token::Equal)?;
             let value = self.parse_value()?;
 
             updates.push(FieldUpdate { field, value });
@@ -542,7 +546,7 @@ impl Parser {
     }
 
     fn parse_delete(&mut self) -> ParseResult<IqlQuery> {
-        self.expect(Token::Delete)?;
+        self.expect(&Token::Delete)?;
 
         let entity = self.parse_delete_target()?;
 
@@ -554,12 +558,12 @@ impl Parser {
             Token::User => {
                 self.advance();
                 let username = self.parse_identifier("USERNAME")?;
-                DeleteTarget::User(UserId(username))
+                DeleteTarget::User(UserId::new(&username))
             }
             Token::Project => {
                 self.advance();
                 let project = self.parse_identifier("PROJECT")?;
-                DeleteTarget::Project(ProjectId(project))
+                DeleteTarget::Project(ProjectId::new(&project))
             }
             Token::Issue => {
                 self.advance();
@@ -568,8 +572,8 @@ impl Parser {
             }
             Token::Comment => {
                 self.advance();
-                let id = self.parse_number()? as u64;
-                DeleteTarget::Comment(CommentId(id.to_string()))
+                let id = self.parse_identifier("COMMENT")?;
+                DeleteTarget::Comment(CommentId::new(&id))
             }
             _ => {
                 return Err(ParseError::UnexpectedToken {
@@ -584,21 +588,21 @@ impl Parser {
     }
 
     fn parse_assign(&mut self) -> ParseResult<IqlQuery> {
-        self.expect(Token::Assign)?;
-        self.expect(Token::Issue)?;
+        self.expect(&Token::Assign)?;
+        self.expect(&Token::Issue)?;
 
         let issue_id = self.parse_issue_id()?;
 
-        self.expect(Token::To)?;
+        self.expect(&Token::To)?;
 
-        let assignee = UserId(self.parse_identifier("ASSIGNEE")?);
+        let assignee = UserId::new(&self.parse_identifier("ASSIGNEE")?);
 
         Ok(IqlQuery::Assign(AssignStatement { issue_id, assignee }))
     }
 
     fn parse_close(&mut self) -> ParseResult<IqlQuery> {
-        self.expect(Token::Close)?;
-        self.expect(Token::Issue)?;
+        self.expect(&Token::Close)?;
+        self.expect(&Token::Issue)?;
 
         let issue_id = self.parse_issue_id()?;
 
@@ -612,8 +616,8 @@ impl Parser {
     }
 
     fn parse_reopen(&mut self) -> ParseResult<IqlQuery> {
-        self.expect(Token::Reopen)?;
-        self.expect(Token::Issue)?;
+        self.expect(&Token::Reopen)?;
+        self.expect(&Token::Issue)?;
 
         let issue_id = self.parse_issue_id()?;
 
@@ -621,13 +625,13 @@ impl Parser {
     }
 
     fn parse_comment(&mut self) -> ParseResult<IqlQuery> {
-        self.expect(Token::Comment)?;
-        self.expect(Token::On)?;
-        self.expect(Token::Issue)?;
+        self.expect(&Token::Comment)?;
+        self.expect(&Token::On)?;
+        self.expect(&Token::Issue)?;
 
         let issue_id = self.parse_issue_id()?;
 
-        self.expect(Token::With)?;
+        self.expect(&Token::With)?;
 
         let content = self.parse_string_value("CONTENT")?;
 
@@ -656,14 +660,13 @@ impl Parser {
             self.advance();
 
             if self.match_token(&Token::Hash) {
-                let number = self.parse_number()? as u64;
-                return Ok(IssueId(format!("{}#{}", project, number)));
-            } else {
-                return Err(ParseError::InvalidIssueId {
-                    value: project,
-                    position: self.get_position_for_error(),
-                });
+                let number = self.parse_integer()?;
+                return Ok(IssueId::new(&format!("{project}#{number}")));
             }
+            return Err(ParseError::InvalidIssueId {
+                value: project,
+                position: self.get_position_for_error(),
+            });
         }
 
         Err(ParseError::UnexpectedToken {
@@ -714,8 +717,8 @@ impl Parser {
                 self.advance();
                 Ok(value)
             }
-            Token::Number(n) => {
-                let value = IqlValue::Number(*n);
+            Token::Integer(n) => {
+                let value = IqlValue::Integer(*n);
                 self.advance();
                 Ok(value)
             }
@@ -781,7 +784,7 @@ impl Parser {
             Ok(value)
         } else {
             Err(ParseError::UnexpectedToken {
-                expected: format!("string literal for <{}>", expected_name),
+                expected: format!("string literal for <{expected_name}>"),
                 found: format!("{:?}", self.current()),
                 position: self.get_position_for_error(),
             })
@@ -798,21 +801,35 @@ impl Parser {
             Ok(name)
         } else {
             Err(ParseError::UnexpectedToken {
-                expected: format!("identifier for <{}>", expected_name),
+                expected: format!("identifier for <{expected_name}>"),
                 found: format!("{:?}", self.current()),
                 position: self.get_position_for_error(),
             })
         }
     }
 
-    fn parse_number(&mut self) -> ParseResult<i64> {
-        if let Token::Number(n) = self.current() {
+    fn parse_integer(&mut self) -> ParseResult<i64> {
+        if let Token::Integer(n) = self.current() {
             let value = *n;
             self.advance();
             Ok(value)
         } else {
             Err(ParseError::UnexpectedToken {
                 expected: "number".to_string(),
+                found: format!("{:?}", self.current()),
+                position: self.get_position_for_error(),
+            })
+        }
+    }
+
+    fn parse_unsigned_integer(&mut self) -> ParseResult<u64> {
+        if let Token::UnsignedInteger(n) = self.current() {
+            let value = *n;
+            self.advance();
+            Ok(value)
+        } else {
+            Err(ParseError::UnexpectedToken {
+                expected: "positive number".to_string(),
                 found: format!("{:?}", self.current()),
                 position: self.get_position_for_error(),
             })

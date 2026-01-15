@@ -177,8 +177,11 @@ pub enum Token {
     #[regex(r#""([^"\\]|\\.)*""#, parse_double_quoted_string)]
     String(String),
 
-    #[regex(r"-?[0-9]+", |lex| lex.slice().parse::<i64>().ok())]
-    Number(i64),
+    #[regex(r"-[0-9]+", |lex| lex.slice().parse::<i64>().ok())]
+    Integer(i64),
+
+    #[regex(r"[0-9]+", |lex| lex.slice().parse::<u64>().ok())]
+    UnsignedInteger(u64),
 
     #[regex(r"-?[0-9]+\.[0-9]+", |lex| lex.slice().parse::<f64>().ok())]
     Float(f64),
@@ -239,16 +242,16 @@ pub enum Token {
     Eof,
 }
 
-fn parse_single_quoted_string(lex: &mut logos::Lexer<Token>) -> Option<String> {
+fn parse_single_quoted_string(lex: &mut logos::Lexer<Token>) -> String {
     let slice = lex.slice();
     let content = &slice[1..slice.len() - 1];
-    Some(unescape_string(content))
+    unescape_string(content)
 }
 
-fn parse_double_quoted_string(lex: &mut logos::Lexer<Token>) -> Option<String> {
+fn parse_double_quoted_string(lex: &mut logos::Lexer<Token>) -> String {
     let slice = lex.slice();
     let content = &slice[1..slice.len() - 1];
-    Some(unescape_string(content))
+    unescape_string(content)
 }
 
 fn unescape_string(s: &str) -> String {
@@ -258,10 +261,10 @@ fn unescape_string(s: &str) -> String {
     while let Some(ch) = chars.next() {
         if ch == '\\' {
             match chars.next() {
+                Some('\\') | None => result.push('\\'),
                 Some('n') => result.push('\n'),
                 Some('t') => result.push('\t'),
                 Some('r') => result.push('\r'),
-                Some('\\') => result.push('\\'),
                 Some('\'') => result.push('\''),
                 Some('"') => result.push('"'),
                 Some('0') => result.push('\0'),
@@ -270,7 +273,6 @@ fn unescape_string(s: &str) -> String {
                     result.push('\\');
                     result.push(c);
                 }
-                None => result.push('\\'),
             }
         } else {
             result.push(ch);
