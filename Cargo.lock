@@ -496,6 +496,7 @@ dependencies = [
  "async-trait",
  "facet",
  "facet-json",
+ "facet-value",
  "issuecraft-ql",
  "thiserror",
  "time",

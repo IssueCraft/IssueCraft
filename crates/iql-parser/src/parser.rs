@@ -138,7 +138,7 @@ impl Parser {
     fn parse_create_project(&mut self) -> ParseResult<IqlQuery> {
         self.expect(Token::Project)?;
 
-        let project_id = self.parse_identifier("PROJECT_ID")?;
+        let project_id = ProjectId(self.parse_identifier("PROJECT_ID")?);
         let mut name = None;
         let mut description = None;
         let mut owner = None;
@@ -159,7 +159,7 @@ impl Parser {
                     }
                     Token::Owner => {
                         self.advance();
-                        owner = Some(self.parse_identifier("OWNER")?);
+                        owner = Some(UserId(self.parse_identifier("OWNER")?));
                     }
                     Token::Identifier(id) if id.eq_ignore_ascii_case("name") => {
                         self.advance();
@@ -173,7 +173,7 @@ impl Parser {
                     }
                     Token::Identifier(id) if id.eq_ignore_ascii_case("owner") => {
                         self.advance();
-                        owner = Some(self.parse_identifier("OWNER")?);
+                        owner = Some(UserId(self.parse_identifier("OWNER")?));
                         started = false;
                     }
                     _ => break,
@@ -203,7 +203,7 @@ impl Parser {
 
         self.expect(Token::In)?;
 
-        let project = self.parse_identifier("PROJECT_ID")?;
+        let project = ProjectId(self.parse_identifier("PROJECT_ID")?);
 
         if !self.match_token(&Token::With) {
             return Err(ParseError::MissingClause {
@@ -554,12 +554,12 @@ impl Parser {
             Token::User => {
                 self.advance();
                 let username = self.parse_identifier("USERNAME")?;
-                DeleteTarget::User(username)
+                DeleteTarget::User(UserId(username))
             }
             Token::Project => {
                 self.advance();
                 let project = self.parse_identifier("PROJECT")?;
-                DeleteTarget::Project(project)
+                DeleteTarget::Project(ProjectId(project))
             }
             Token::Issue => {
                 self.advance();
@@ -569,7 +569,7 @@ impl Parser {
             Token::Comment => {
                 self.advance();
                 let id = self.parse_number()? as u64;
-                DeleteTarget::Comment(id)
+                DeleteTarget::Comment(CommentId(id.to_string()))
             }
             _ => {
                 return Err(ParseError::UnexpectedToken {
@@ -591,7 +591,7 @@ impl Parser {
 
         self.expect(Token::To)?;
 
-        let assignee = self.parse_identifier("ASSIGNEE")?;
+        let assignee = UserId(self.parse_identifier("ASSIGNEE")?);
 
         Ok(IqlQuery::Assign(AssignStatement { issue_id, assignee }))
     }

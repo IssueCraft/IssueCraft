@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, ops::Deref};
 
 use facet::{Facet, Type};
 use facet_value::Value as FacetValue;
@@ -17,67 +17,54 @@ pub enum IqlQuery {
     Comment(CommentStatement),
 }
 
-pub trait IdHelper {
-    fn id_from_str(val: &str) -> Self;
-    fn str_from_id(&self) -> &str;
-}
-
-impl IdHelper for String {
-    fn id_from_str(val: &str) -> Self {
-        val.to_string()
-    }
-
-    fn str_from_id(&self) -> &str {
-        self.as_str()
-    }
-}
-
 #[derive(Debug, Clone, Facet, PartialEq)]
 #[repr(C)]
 #[facet(transparent)]
 pub struct UserId(pub String);
+
+impl Deref for UserId {
+    type Target = str;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[derive(Debug, Clone, Facet, PartialEq)]
 #[repr(C)]
 #[facet(transparent)]
 pub struct ProjectId(pub String);
 
+impl Deref for ProjectId {
+    type Target = str;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 #[derive(Debug, Clone, Facet, PartialEq)]
 #[repr(C)]
 #[facet(transparent)]
 pub struct IssueId(pub String);
+
+impl Deref for IssueId {
+    type Target = str;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[derive(Debug, Clone, Facet, PartialEq)]
 #[repr(C)]
 #[facet(transparent)]
 pub struct CommentId(pub String);
 
-impl IdHelper for ProjectId {
-    fn id_from_str(val: &str) -> Self {
-        ProjectId(val.to_string())
-    }
+impl Deref for CommentId {
+    type Target = str;
 
-    fn str_from_id(&self) -> &str {
-        &self.0
-    }
-}
-
-impl IdHelper for IssueId {
-    fn id_from_str(val: &str) -> Self {
-        IssueId(val.to_string())
-    }
-
-    fn str_from_id(&self) -> &str {
-        &self.0
-    }
-}
-
-impl IdHelper for CommentId {
-    fn id_from_str(val: &str) -> Self {
-        CommentId(val.to_string())
-    }
-
-    fn str_from_id(&self) -> &str {
+    fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
@@ -90,13 +77,13 @@ pub enum CreateStatement {
         name: Option<String>,
     },
     Project {
-        project_id: String,
+        project_id: ProjectId,
         name: Option<String>,
         description: Option<String>,
-        owner: Option<String>,
+        owner: Option<UserId>,
     },
     Issue {
-        project: String,
+        project: ProjectId,
         title: String,
         kind: IssueKind,
         description: Option<String>,
@@ -138,24 +125,13 @@ pub enum EntityType {
     Comments,
 }
 
-impl EntityType {
-    pub fn kind(&self) -> String {
-        match self {
-            EntityType::Users => "USER".to_string(),
-            EntityType::Projects => "PROJECT".to_string(),
-            EntityType::Issues => "ISSUE".to_string(),
-            EntityType::Comments => "COMMENT".to_string(),
-        }
-    }
-}
-
 impl fmt::Display for EntityType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            EntityType::Users => write!(f, "users"),
-            EntityType::Projects => write!(f, "projects"),
-            EntityType::Issues => write!(f, "issues"),
-            EntityType::Comments => write!(f, "comments"),
+            EntityType::Users => write!(f, "USERS"),
+            EntityType::Projects => write!(f, "PROJECTS"),
+            EntityType::Issues => write!(f, "ISSUES"),
+            EntityType::Comments => write!(f, "COMMENTS"),
         }
     }
 }
@@ -379,10 +355,10 @@ pub struct DeleteStatement {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum DeleteTarget {
-    User(String),
-    Project(String),
+    User(UserId),
+    Project(ProjectId),
     Issue(IssueId),
-    Comment(u64),
+    Comment(CommentId),
 }
 
 #[derive(Debug, Clone, Facet, PartialEq)]
@@ -397,7 +373,7 @@ pub enum IssueKind {
 #[derive(Debug, Clone, PartialEq)]
 pub struct AssignStatement {
     pub issue_id: IssueId,
-    pub assignee: String,
+    pub assignee: UserId,
 }
 
 #[derive(Debug, Clone, PartialEq, Facet, Default)]

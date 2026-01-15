@@ -10,6 +10,7 @@ repository.workspace = true
 issuecraft-ql.workspace = true
 thiserror.workspace = true
 facet.workspace = true
+facet-value.workspace = true
 facet-json.workspace = true
 async-trait.workspace = true
 time.workspace = true
