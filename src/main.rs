@@ -3,7 +3,9 @@
 use std::path::{Path, PathBuf};
 
 use clap::Parser;
-use issuecraft_core::{Client, ExecutionEngine, ExecutionResult, UserProvider};
+use issuecraft_core::{
+    AuthorizationProvider, Client, ExecutionEngine, ExecutionResult, UserProvider,
+};
 use issuecraft_ql::UserId;
 
 use crate::{cli::Cli, config::Config};
@@ -23,18 +25,30 @@ async fn main() -> anyhow::Result<()> {
         tokio::fs::create_dir_all(db_folder).await?;
     }
 
-    let user_provider = issuecraft_core::SingleUserProvider::new(UserId::new("default"));
+    let user_provider = issuecraft_core::SingleUserUserProvider::new(UserId::new("default"));
+    let authorization_provider =
+        issuecraft_core::SingleUserAuthorizationProvider::new(UserId::new("default"));
     let mut db = issuecraft_redb::Database::new(&issuecraft_redb::DatabaseType::File(db_path))?;
-    println!("{}", run_query(&user_provider, &mut db, &query).await?);
+    println!(
+        "{}",
+        run_query(&user_provider, &authorization_provider, &mut db, &query).await?
+    );
 
     Ok(())
 }
 
-async fn run_query<UP: UserProvider + Sync, T: ExecutionEngine>(
+async fn run_query<
+    UP: UserProvider + Sync,
+    AP: AuthorizationProvider + Sync,
+    T: ExecutionEngine,
+>(
     user_provider: &UP,
+    authorization_provider: &AP,
     engine: &mut T,
     query: &str,
 ) -> anyhow::Result<ExecutionResult> {
     let query = issuecraft_ql::parse_query(query)?;
-    Ok(engine.execute(user_provider, &query).await?)
+    Ok(engine
+        .execute(user_provider, authorization_provider, &query)
+        .await?)
 }

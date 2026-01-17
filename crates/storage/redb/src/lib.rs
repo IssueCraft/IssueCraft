@@ -3,10 +3,10 @@ use std::{fmt::Display, path::PathBuf};
 use async_trait::async_trait;
 use facet::Facet;
 use facet_pretty::FacetPretty;
-use facet_value::{Value, from_value};
+use facet_value::{Value, from_value, value};
 use issuecraft_core::{
-    BackendError, CommentInfo, EntityId, ExecutionEngine, ExecutionResult, IssueInfo, IssueStatus,
-    Priority, ProjectInfo, UserProvider,
+    AuthorizationProvider, BackendError, CommentInfo, EntityId, ExecutionEngine, ExecutionResult,
+    IssueInfo, IssueStatus, Priority, ProjectInfo, UserProvider,
 };
 use issuecraft_ql::{
     AssignStatement, CloseStatement, CommentId, CommentStatement, DeleteStatement, DeleteTarget,
@@ -325,9 +325,10 @@ fn to_iql_error<E: Display>(err: E) -> BackendError {
 #[async_trait]
 #[allow(clippy::too_many_lines)]
 impl ExecutionEngine for Database {
-    async fn execute<UP: UserProvider + Sync>(
+    async fn execute<UP: UserProvider + Sync, AP: AuthorizationProvider + Sync>(
         &mut self,
         user_provider: &UP,
+        authorization_provider: &AP,
         query: &IqlQuery,
     ) -> Result<ExecutionResult, BackendError> {
         match query {
@@ -359,7 +360,7 @@ impl ExecutionEngine for Database {
                     }
                     let owner = match owner {
                         Some(owner) => owner.clone(),
-                        None => user_provider.get_user("")?,
+                        None => user_provider.get_user("").await?,
                     };
 
                     if !self.exists(&owner)? {
@@ -391,7 +392,7 @@ impl ExecutionEngine for Database {
                     }
                     let assignee = match assignee {
                         Some(assignee) => assignee.clone(),
-                        None => user_provider.get_user("")?,
+                        None => user_provider.get_user("").await?,
                     };
                     let issue_number = self.get_next_issue_id(project)?;
                     let issue_info = IssueInfo {
@@ -427,7 +428,27 @@ impl ExecutionEngine for Database {
                     Ok(ExecutionResult::one())
                 }
                 issuecraft_ql::UpdateTarget::Comment(id) => {
-                    let user = user_provider.get_user("")?;
+                    let user = user_provider.get_user("").await?;
+                    let author: Value = self.get(id)?.author.into();
+                    let context = value!({
+                        "owner": author
+                    });
+                    if authorization_provider
+                        .check_authorization(
+                            &user,
+                            &issuecraft_core::Action::Update,
+                            &issuecraft_core::Resource::Comment,
+                            Some(context),
+                        )
+                        .await?
+                        .status
+                        != issuecraft_core::AuthorizationStatus::Authorized
+                    {
+                        return Err(BackendError::PermissionDenied(
+                            "User is not authorized to edit comments".to_string(),
+                        ));
+                    }
+
                     if self.get(id)?.author != user {
                         return Err(BackendError::PermissionDenied(
                             "Cannot edit comments authored by other users".to_string(),

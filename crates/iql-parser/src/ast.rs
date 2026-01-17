@@ -32,6 +32,12 @@ impl UserId {
     }
 }
 
+impl Into<FacetValue> for UserId {
+    fn into(self) -> FacetValue {
+        facet_value::VString::new(&self.0).into_value()
+    }
+}
+
 impl Display for UserId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)

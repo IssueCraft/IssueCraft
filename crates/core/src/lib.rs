@@ -3,6 +3,7 @@ use std::{fmt::Display, ops::Deref};
 use async_trait::async_trait;
 use facet::Facet;
 use facet_json::{DeserializeError, JsonError};
+use facet_value::Value as FacetValue;
 use issuecraft_ql::{
     CloseReason, CommentId, EntityType, IqlError, IqlQuery, IssueId, IssueKind, ProjectId, UserId,
 };
@@ -110,33 +111,117 @@ pub struct CommentInfo {
     pub author: UserId,
 }
 
-#[async_trait]
-pub trait UserProvider {
-    fn get_user(&self, token: &str) -> Result<UserId, BackendError>;
+#[derive(Debug, Clone, Facet)]
+#[repr(C)]
+#[facet(transparent)]
+pub enum Action {
+    Create,
+    Delete,
+    Update,
 }
 
-pub struct SingleUserProvider {
+#[derive(Debug, Clone, Facet)]
+#[repr(C)]
+#[facet(transparent)]
+pub enum Resource {
+    User,
+    Project,
+    Issue,
+    Comment,
+}
+
+#[derive(Debug, Clone, Facet, PartialEq)]
+#[repr(C)]
+#[facet(transparent)]
+pub enum AuthorizationStatus {
+    Authorized,
+    Denied,
+}
+
+#[derive(Debug, Clone, Facet)]
+pub struct AuthorizationResult {
+    pub user: UserId,
+    pub action: Action,
+    pub resource: Resource,
+    pub status: AuthorizationStatus,
+}
+
+#[async_trait]
+pub trait AuthorizationProvider {
+    async fn check_authorization(
+        &self,
+        principal: &UserId,
+        action: &Action,
+        resource: &Resource,
+        context: Option<FacetValue>,
+    ) -> Result<AuthorizationResult, BackendError>;
+}
+
+#[async_trait]
+pub trait UserProvider {
+    async fn get_user(&self, token: &str) -> Result<UserId, BackendError>;
+}
+
+pub struct SingleUserUserProvider {
     pub user: UserId,
 }
 
-impl SingleUserProvider {
+impl SingleUserUserProvider {
     #[must_use]
     pub fn new(user: UserId) -> Self {
         Self { user }
     }
 }
 
-impl UserProvider for SingleUserProvider {
-    fn get_user(&self, _token: &str) -> Result<UserId, BackendError> {
+#[async_trait]
+impl UserProvider for SingleUserUserProvider {
+    async fn get_user(&self, _token: &str) -> Result<UserId, BackendError> {
         Ok(self.user.clone())
+    }
+}
+
+pub struct SingleUserAuthorizationProvider {
+    pub user: UserId,
+}
+
+impl SingleUserAuthorizationProvider {
+    #[must_use]
+    pub fn new(user: UserId) -> Self {
+        Self { user }
+    }
+}
+
+#[async_trait]
+impl AuthorizationProvider for SingleUserAuthorizationProvider {
+    async fn check_authorization(
+        &self,
+        principal: &UserId,
+        action: &Action,
+        resource: &Resource,
+        _context: Option<FacetValue>,
+    ) -> Result<AuthorizationResult, BackendError> {
+        if principal == &self.user {
+            Ok(AuthorizationResult {
+                user: principal.clone(),
+                action: action.clone(),
+                resource: resource.clone(),
+                status: AuthorizationStatus::Authorized,
+            })
+        } else {
+            Err(BackendError::PermissionDenied(format!(
+                "User '{}' is not authorized",
+                principal
+            )))
+        }
     }
 }
 
 #[async_trait]
 pub trait ExecutionEngine {
-    async fn execute<UP: UserProvider + Sync>(
+    async fn execute<UP: UserProvider + Sync, AP: AuthorizationProvider + Sync>(
         &mut self,
         user_provider: &UP,
+        authorization_provider: &AP,
         query: &IqlQuery,
     ) -> Result<ExecutionResult, BackendError>;
 }
