@@ -1,8 +1,10 @@
 use std::{fmt::Display, ops::Deref};
 
 use async_trait::async_trait;
+use bon::Builder;
 use facet::Facet;
 use facet_json::{DeserializeError, JsonError};
+use facet_pretty::FacetPretty;
 use facet_value::Value as FacetValue;
 use issuecraft_ql::{
     CloseReason, CommentId, EntityType, IqlError, IqlQuery, IssueId, IssueKind, ProjectId, UserId,
@@ -62,7 +64,7 @@ pub struct ProjectInfo {
     pub description: Option<String>,
     pub owner: UserId,
     #[facet(skip_serializing_if = Option::is_none)]
-    pub display: Option<String>,
+    pub name: Option<String>,
 }
 
 #[derive(Debug, Clone, Facet)]
@@ -159,37 +161,22 @@ pub trait AuthorizationProvider {
 
 #[async_trait]
 pub trait UserProvider {
-    async fn get_user(&self, token: &str) -> Result<UserId, BackendError>;
+    async fn get_user(&self, token: &str) -> Result<Option<UserId>, BackendError>;
 }
 
-pub struct SingleUserUserProvider {
-    pub user: UserId,
-}
-
-impl SingleUserUserProvider {
-    #[must_use]
-    pub fn new(user: UserId) -> Self {
-        Self { user }
-    }
-}
+pub struct SingleUserUserProvider;
 
 #[async_trait]
 impl UserProvider for SingleUserUserProvider {
-    async fn get_user(&self, _token: &str) -> Result<UserId, BackendError> {
-        Ok(self.user.clone())
+    async fn get_user(&self, token: &str) -> Result<Option<UserId>, BackendError> {
+        match token {
+            "<default>" | "default" => Ok(Some(UserId::new("default"))),
+            _ => Ok(None),
+        }
     }
 }
 
-pub struct SingleUserAuthorizationProvider {
-    pub user: UserId,
-}
-
-impl SingleUserAuthorizationProvider {
-    #[must_use]
-    pub fn new(user: UserId) -> Self {
-        Self { user }
-    }
-}
+pub struct SingleUserAuthorizationProvider;
 
 #[async_trait]
 impl AuthorizationProvider for SingleUserAuthorizationProvider {
@@ -200,7 +187,7 @@ impl AuthorizationProvider for SingleUserAuthorizationProvider {
         resource: &Resource,
         _context: Option<FacetValue>,
     ) -> Result<AuthorizationResult, BackendError> {
-        if principal == &self.user {
+        if principal == &UserId::new("default") {
             Ok(AuthorizationResult {
                 user: principal.clone(),
                 action: action.clone(),
@@ -226,17 +213,30 @@ pub trait ExecutionEngine {
     ) -> Result<ExecutionResult, BackendError>;
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Facet)]
+pub struct Entry<K, V> {
+    pub key: K,
+    pub value: V,
+}
+
+#[derive(Debug, Clone, Builder)]
 pub struct ExecutionResult {
-    pub affected_rows: u128,
+    #[builder(start_fn)]
+    pub rows: u128,
     pub info: Option<String>,
+    pub data: Option<String>,
 }
 
 impl Display for ExecutionResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Affected Rows: {}", self.affected_rows)?;
+        write!(f, "Affected Rows: {}", self.rows)?;
         if let Some(info) = &self.info {
             write!(f, "\nInfo: {info}")?;
+        }
+        if let Some(data) = &self.data {
+            let data: Vec<Entry<UserId, <UserId as EntityId>::EntityType>> =
+                facet_json::from_str(&facet_json::from_str::<String>(data).unwrap()).unwrap();
+            write!(f, "\nData: {}", data.pretty())?;
         }
         Ok(())
     }
@@ -245,8 +245,9 @@ impl Display for ExecutionResult {
 impl From<String> for ExecutionResult {
     fn from(s: String) -> Self {
         Self {
-            affected_rows: 0,
+            rows: 0,
             info: Some(s),
+            data: None,
         }
     }
 }
@@ -254,8 +255,9 @@ impl From<String> for ExecutionResult {
 impl From<&str> for ExecutionResult {
     fn from(s: &str) -> Self {
         Self {
-            affected_rows: 0,
+            rows: 0,
             info: Some(s.to_string()),
+            data: None,
         }
     }
 }
@@ -264,35 +266,24 @@ impl ExecutionResult {
     #[must_use]
     pub fn new(rows: u128) -> Self {
         Self {
-            affected_rows: rows,
+            rows: rows,
             info: None,
+            data: None,
         }
     }
 
     #[must_use]
-    pub fn one() -> Self {
-        Self {
-            affected_rows: 1,
-            info: None,
-        }
+    pub fn one() -> ExecutionResultBuilder {
+        Self::builder(1)
     }
 
     #[must_use]
-    pub fn zero() -> Self {
-        Self {
-            affected_rows: 0,
-            info: None,
-        }
+    pub fn zero() -> ExecutionResultBuilder {
+        Self::builder(0)
     }
 
     pub fn inc(&mut self) {
-        self.affected_rows += 1;
-    }
-
-    #[must_use]
-    pub fn with_info(mut self, info: &str) -> Self {
-        self.info = Some(info.to_string());
-        self
+        self.rows += 1;
     }
 }
 

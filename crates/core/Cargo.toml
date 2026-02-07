@@ -12,5 +12,7 @@ thiserror.workspace = true
 facet.workspace = true
 facet-value.workspace = true
 facet-json.workspace = true
+facet-pretty.workspace = true
 async-trait.workspace = true
 time.workspace = true
+bon = "3.8.2"

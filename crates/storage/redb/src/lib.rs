@@ -2,11 +2,10 @@ use std::{fmt::Display, path::PathBuf};
 
 use async_trait::async_trait;
 use facet::Facet;
-use facet_pretty::FacetPretty;
 use facet_value::{Value, from_value, value};
 use issuecraft_core::{
-    AuthorizationProvider, BackendError, CommentInfo, EntityId, ExecutionEngine, ExecutionResult,
-    IssueInfo, IssueStatus, Priority, ProjectInfo, UserProvider,
+    AuthorizationProvider, BackendError, CommentInfo, EntityId, Entry, ExecutionEngine,
+    ExecutionResult, IssueInfo, IssueStatus, Priority, ProjectInfo, UserInfo, UserProvider,
 };
 use issuecraft_ql::{
     AssignStatement, CloseStatement, CommentId, CommentStatement, DeleteStatement, DeleteTarget,
@@ -15,13 +14,10 @@ use issuecraft_ql::{
 };
 use nanoid::nanoid;
 use redb::{
-    DatabaseError, ReadableDatabase, ReadableTable, TableDefinition, TableHandle,
-    backends::InMemoryBackend,
+    ReadableDatabase, ReadableTable, TableDefinition, TableHandle, backends::InMemoryBackend,
 };
 
-const REDB_DEFAULT_USER: &str = "redb_local";
-
-const TABLE_META: TableDefinition<&str, String> = TableDefinition::new("meta");
+const TABLE_USERS: TableDefinition<&str, String> = TableDefinition::new("users");
 const TABLE_PROJECTS: TableDefinition<&str, String> = TableDefinition::new("projects");
 const TABLE_ISSUES: TableDefinition<&str, String> = TableDefinition::new("issues");
 const TABLE_COMMENTS: TableDefinition<&str, String> = TableDefinition::new("comments");
@@ -35,15 +31,9 @@ pub enum DatabaseType {
     File(PathBuf),
 }
 
-#[derive(Facet)]
-struct Entry<K, V> {
-    pub key: K,
-    pub value: V,
-}
-
 fn get_table<'a>(kind: EntityType) -> TableDefinition<'a, &'a str, String> {
     match kind {
-        EntityType::Users => TABLE_META,
+        EntityType::Users => TABLE_USERS,
         EntityType::Projects => TABLE_PROJECTS,
         EntityType::Issues => TABLE_ISSUES,
         EntityType::Comments => TABLE_COMMENTS,
@@ -51,17 +41,24 @@ fn get_table<'a>(kind: EntityType) -> TableDefinition<'a, &'a str, String> {
 }
 
 impl Database {
-    pub fn new(typ: &DatabaseType) -> Result<Self, DatabaseError> {
-        match typ {
-            DatabaseType::InMemory => {
-                let db = redb::Database::builder().create_with_backend(InMemoryBackend::new())?;
-                Ok(Self { db })
-            }
-            DatabaseType::File(path) => {
-                let db = redb::Database::create(path)?;
-                Ok(Self { db })
-            }
-        }
+    pub fn new(typ: DatabaseType) -> Result<Self, BackendError> {
+        let db = match typ {
+            DatabaseType::InMemory => redb::Database::builder()
+                .create_with_backend(InMemoryBackend::new())
+                .map_err(to_iql_error)?,
+            DatabaseType::File(path) => redb::Database::create(path).map_err(to_iql_error)?,
+        };
+        // TODO: implement proper initialization
+        let mut db = Self { db };
+        db.set(
+            &UserId::new("default"),
+            &UserInfo {
+                name: "Default User".to_string(),
+                email: "default@example.com".to_string(),
+                display: Some("Default User".to_string()),
+            },
+        )?;
+        Ok(db)
     }
 
     fn table_exists(&self, table_name: &str) -> Result<bool, BackendError> {
@@ -314,8 +311,7 @@ impl Database {
 }
 
 fn stringify<'a, T: Facet<'a>>(value: &'a T) -> String {
-    let value: Value = facet_json::from_str(&facet_json::to_string(value).unwrap()).unwrap();
-    format!("{}", value.pretty())
+    facet_json::to_string(value).unwrap()
 }
 
 fn to_iql_error<E: Display>(err: E) -> BackendError {
@@ -331,21 +327,30 @@ impl ExecutionEngine for Database {
         authorization_provider: &AP,
         query: &IqlQuery,
     ) -> Result<ExecutionResult, BackendError> {
+        // TODO: replace unwrap with proper logic
+        let user = user_provider.get_user("<default>").await?.unwrap();
+
         match query {
             issuecraft_ql::IqlQuery::Select(select_statement) => {
-                let info = match select_statement.from {
-                    issuecraft_ql::EntityType::Users => return Err(BackendError::NotSupported),
+                let result = match select_statement.from {
+                    issuecraft_ql::EntityType::Users => {
+                        let result = self.get_all::<UserId>(select_statement)?;
+                        stringify(&result)
+                    }
                     issuecraft_ql::EntityType::Projects => {
-                        stringify(&self.get_all::<ProjectId>(select_statement)?)
+                        let result = self.get_all::<ProjectId>(select_statement)?;
+                        stringify(&result)
                     }
                     issuecraft_ql::EntityType::Issues => {
-                        stringify(&self.get_all::<IssueId>(select_statement)?)
+                        let result = self.get_all::<IssueId>(select_statement)?;
+                        stringify(&result)
                     }
                     issuecraft_ql::EntityType::Comments => {
-                        stringify(&self.get_all::<CommentId>(select_statement)?)
+                        let result = self.get_all::<CommentId>(select_statement)?;
+                        stringify(&result)
                     }
                 };
-                Ok(ExecutionResult::zero().with_info(&info))
+                Ok(ExecutionResult::zero().data(result).build())
             }
             issuecraft_ql::IqlQuery::Create(create_statement) => match create_statement {
                 issuecraft_ql::CreateStatement::User { .. } => Err(BackendError::NotSupported),
@@ -360,7 +365,7 @@ impl ExecutionEngine for Database {
                     }
                     let owner = match owner {
                         Some(owner) => owner.clone(),
-                        None => user_provider.get_user("").await?,
+                        None => user,
                     };
 
                     if !self.exists(&owner)? {
@@ -371,10 +376,10 @@ impl ExecutionEngine for Database {
                     let project_info = ProjectInfo {
                         owner,
                         description: description.clone(),
-                        display: name.clone(),
+                        name: name.clone(),
                     };
                     self.set(project_id, &project_info)?;
-                    Ok(ExecutionResult::one())
+                    Ok(ExecutionResult::one().build())
                 }
                 issuecraft_ql::CreateStatement::Issue {
                     project,
@@ -392,7 +397,7 @@ impl ExecutionEngine for Database {
                     }
                     let assignee = match assignee {
                         Some(assignee) => assignee.clone(),
-                        None => user_provider.get_user("").await?,
+                        None => user,
                     };
                     let issue_number = self.get_next_issue_id(project)?;
                     let issue_info = IssueInfo {
@@ -414,21 +419,20 @@ impl ExecutionEngine for Database {
                         &issue_info,
                     )?;
 
-                    Ok(ExecutionResult::one())
+                    Ok(ExecutionResult::one().build())
                 }
             },
             issuecraft_ql::IqlQuery::Update(UpdateStatement { entity, updates }) => match entity {
                 issuecraft_ql::UpdateTarget::User(_) => Err(BackendError::NotSupported),
                 issuecraft_ql::UpdateTarget::Project(id) => {
                     self.update(id, updates)?;
-                    Ok(ExecutionResult::one())
+                    Ok(ExecutionResult::one().build())
                 }
                 issuecraft_ql::UpdateTarget::Issue(id) => {
                     self.update(id, updates)?;
-                    Ok(ExecutionResult::one())
+                    Ok(ExecutionResult::one().build())
                 }
                 issuecraft_ql::UpdateTarget::Comment(id) => {
-                    let user = user_provider.get_user("").await?;
                     let author: Value = self.get(id)?.author.into();
                     let context = value!({
                         "owner": author
@@ -455,11 +459,11 @@ impl ExecutionEngine for Database {
                         ));
                     }
                     self.update(id, updates)?;
-                    Ok(ExecutionResult::one())
+                    Ok(ExecutionResult::one().build())
                 }
             },
             issuecraft_ql::IqlQuery::Delete(DeleteStatement { entity }) => {
-                let mut result = ExecutionResult::zero();
+                let mut result = ExecutionResult::zero().build();
                 match entity {
                     DeleteTarget::User(_) => return Err(BackendError::NotSupported),
                     DeleteTarget::Project(project_id) => {
@@ -476,7 +480,7 @@ impl ExecutionEngine for Database {
                 let mut issue_info: IssueInfo = self.get(issue_id)?;
                 issue_info.assignee = assignee.clone();
                 self.set(issue_id, &issue_info)?;
-                Ok(ExecutionResult::one())
+                Ok(ExecutionResult::one().build())
             }
             issuecraft_ql::IqlQuery::Close(CloseStatement { issue_id, reason }) => {
                 let issue_info: IssueInfo = self.get(issue_id)?;
@@ -496,12 +500,12 @@ impl ExecutionEngine for Database {
                     },
                 )?;
 
-                Ok(ExecutionResult::one())
+                Ok(ExecutionResult::one().build())
             }
             issuecraft_ql::IqlQuery::Reopen(ReopenStatement { issue_id }) => {
                 let issue_info: IssueInfo = self.get(issue_id)?;
                 if !matches!(issue_info.status, IssueStatus::Closed { .. }) {
-                    return Ok(ExecutionResult::zero());
+                    return Ok(ExecutionResult::zero().build());
                 }
                 self.set(
                     issue_id,
@@ -511,7 +515,7 @@ impl ExecutionEngine for Database {
                     },
                 )?;
 
-                Ok(ExecutionResult::one())
+                Ok(ExecutionResult::one().build())
             }
             issuecraft_ql::IqlQuery::Comment(CommentStatement { issue_id, content }) => {
                 if !self.exists(issue_id)? {
@@ -522,7 +526,7 @@ impl ExecutionEngine for Database {
                 }
                 let comment_info = CommentInfo {
                     issue: issue_id.clone(),
-                    author: UserId::from_str(REDB_DEFAULT_USER),
+                    author: user,
                     content: content.clone(),
                     created_at: time::UtcDateTime::now(),
                 };
@@ -530,7 +534,7 @@ impl ExecutionEngine for Database {
                     &CommentId::from_str(&format!("C{}", nanoid!())),
                     &comment_info,
                 )?;
-                Ok(ExecutionResult::one())
+                Ok(ExecutionResult::one().build())
             }
         }
     }
