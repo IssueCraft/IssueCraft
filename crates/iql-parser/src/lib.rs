@@ -16,6 +16,8 @@ pub fn parse_query(query: &str) -> ParseResult<IqlQuery> {
 pub enum IqlError {
     #[error("IQL query could not be parsed: {0}")]
     MalformedIql(#[from] ParseError),
+    #[error("{0} is not a valid issue kind")]
+    InvalidIssueKind(String),
     #[error("Field not found: {0}")]
     FieldNotFound(String),
 }

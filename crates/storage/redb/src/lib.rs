@@ -54,8 +54,8 @@ impl Database {
             &UserId::new("default"),
             &UserInfo {
                 name: "Default User".to_string(),
-                email: "default@example.com".to_string(),
                 display: Some("Default User".to_string()),
+                email: None,
             },
         )?;
         Ok(db)
@@ -222,7 +222,7 @@ impl Database {
             limit,
             offset,
         }: &SelectStatement,
-    ) -> Result<Vec<Entry<K, K::EntityType>>, BackendError> {
+    ) -> Result<Vec<Entry<K>>, BackendError> {
         let read_txn = self.db.begin_read().map_err(to_iql_error)?;
         {
             let table_definition = get_table(*from);

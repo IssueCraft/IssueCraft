@@ -55,7 +55,7 @@ pub struct UserInfo {
     pub name: String,
     #[facet( skip_serializing_if = Option::is_none)]
     pub display: Option<String>,
-    pub email: String,
+    pub email: Option<String>,
 }
 
 #[derive(Debug, Clone, Facet)]
@@ -214,9 +214,15 @@ pub trait ExecutionEngine {
 }
 
 #[derive(Debug, Facet)]
-pub struct Entry<K, V> {
+pub struct Entry<K: EntityId> {
     pub key: K,
-    pub value: V,
+    pub value: K::EntityType,
+}
+
+#[derive(Debug, Facet)]
+pub struct UntypedEntry {
+    pub key: String,
+    pub value: FacetValue,
 }
 
 #[derive(Debug, Clone, Builder)]
@@ -234,8 +240,7 @@ impl Display for ExecutionResult {
             write!(f, "\nInfo: {info}")?;
         }
         if let Some(data) = &self.data {
-            let data: Vec<Entry<UserId, <UserId as EntityId>::EntityType>> =
-                facet_json::from_str(&facet_json::from_str::<String>(data).unwrap()).unwrap();
+            let data: Vec<UntypedEntry> = facet_json::from_str(&data).unwrap();
             write!(f, "\nData: {}", data.pretty())?;
         }
         Ok(())
