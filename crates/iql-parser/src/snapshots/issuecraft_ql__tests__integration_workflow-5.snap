@@ -7,6 +7,8 @@ Assign(
         issue_id: IssueId(
             "backend#1",
         ),
-        assignee: "alice",
+        assignee: UserId(
+            "alice",
+        ),
     },
 )

@@ -660,7 +660,7 @@ impl Parser {
             self.advance();
 
             if self.match_token(&Token::Hash) {
-                let number = self.parse_integer()?;
+                let number = self.parse_unsigned_integer()?;
                 return Ok(IssueId::new(&format!("{project}#{number}")));
             }
             return Err(ParseError::InvalidIssueId {
@@ -717,13 +717,13 @@ impl Parser {
                 self.advance();
                 Ok(value)
             }
-            Token::Integer(n) => {
-                let value = IqlValue::Integer(*n);
+            Token::Float(f) => {
+                let value = IqlValue::Float(*f);
                 self.advance();
                 Ok(value)
             }
-            Token::Float(f) => {
-                let value = IqlValue::Float(*f);
+            Token::UnsignedInteger(i) => {
+                let value = IqlValue::UnsignedInteger(*i);
                 self.advance();
                 Ok(value)
             }
@@ -802,20 +802,6 @@ impl Parser {
         } else {
             Err(ParseError::UnexpectedToken {
                 expected: format!("identifier for <{expected_name}>"),
-                found: format!("{:?}", self.current()),
-                position: self.get_position_for_error(),
-            })
-        }
-    }
-
-    fn parse_integer(&mut self) -> ParseResult<i64> {
-        if let Token::Integer(n) = self.current() {
-            let value = *n;
-            self.advance();
-            Ok(value)
-        } else {
-            Err(ParseError::UnexpectedToken {
-                expected: "number".to_string(),
                 found: format!("{:?}", self.current()),
                 position: self.get_position_for_error(),
             })

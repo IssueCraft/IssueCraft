@@ -177,9 +177,6 @@ pub enum Token {
     #[regex(r#""([^"\\]|\\.)*""#, parse_double_quoted_string)]
     String(String),
 
-    #[regex(r"-[0-9]+", |lex| lex.slice().parse::<i64>().ok())]
-    Integer(i64),
-
     #[regex(r"[0-9]+", |lex| lex.slice().parse::<u64>().ok())]
     UnsignedInteger(u64),
 
@@ -418,7 +415,7 @@ mod tests {
 
     #[test]
     fn test_tokenize_number() {
-        let tokens = tokenize("123 -456").unwrap();
+        let tokens = tokenize("123").unwrap();
         insta::assert_debug_snapshot!(&tokens);
     }
 

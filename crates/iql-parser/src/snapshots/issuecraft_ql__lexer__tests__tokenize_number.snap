@@ -6,8 +6,5 @@ expression: "&tokens"
     UnsignedInteger(
         123,
     ),
-    Integer(
-        -456,
-    ),
     Eof,
 ]

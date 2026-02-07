@@ -10,7 +10,7 @@ Select(
             Comparison {
                 field: "count",
                 op: LessThanOrEqual,
-                value: Number(
+                value: UnsignedInteger(
                     5,
                 ),
             },

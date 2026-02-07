@@ -222,13 +222,6 @@ mod tests {
     }
 
     #[test]
-    fn test_negative_numbers() {
-        let query = "UPDATE issue test#100 SET count = -50";
-        let result = parse_query(query).unwrap();
-        insta::assert_debug_snapshot!(&result);
-    }
-
-    #[test]
     fn test_float_values() {
         let query = "UPDATE issue test#100 SET score = 3.14159";
         let result = parse_query(query).unwrap();
@@ -333,7 +326,7 @@ mod tests {
             "DELETE user alice",
             "DELETE project backend",
             "DELETE issue backend#456",
-            "DELETE comment 789",
+            "DELETE comment C789",
         ];
         for query in queries {
             let result = parse_query(query).unwrap();

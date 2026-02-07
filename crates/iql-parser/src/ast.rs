@@ -462,7 +462,6 @@ impl fmt::Display for Priority {
 #[derive(Debug, Clone, PartialEq)]
 pub enum IqlValue {
     String(String),
-    Integer(i64),
     UnsignedInteger(u64),
     Float(f64),
     Boolean(bool),
@@ -475,7 +474,6 @@ impl IqlValue {
     fn to_facet(&self) -> FacetValue {
         match self {
             IqlValue::String(s) => facet_value::VString::new(s).into_value(),
-            IqlValue::Integer(n) => facet_value::VNumber::from_i64(*n).into_value(),
             IqlValue::UnsignedInteger(n) => facet_value::VNumber::from_u64(*n).into_value(),
             IqlValue::Float(f) => facet_value::VNumber::from_f64(*f)
                 .expect("Invalid float value")
@@ -498,7 +496,6 @@ impl fmt::Display for IqlValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             IqlValue::String(s) => write!(f, "'{s}'"),
-            IqlValue::Integer(n) => write!(f, "{n}"),
             IqlValue::UnsignedInteger(n) => write!(f, "{n}"),
             IqlValue::Float(fl) => write!(f, "{fl}"),
             IqlValue::Boolean(b) => write!(f, "{b}"),

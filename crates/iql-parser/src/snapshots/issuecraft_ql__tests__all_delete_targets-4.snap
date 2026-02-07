@@ -5,7 +5,9 @@ expression: "&result"
 Delete(
     DeleteStatement {
         entity: Comment(
-            789,
+            CommentId(
+                "C789",
+            ),
         ),
     },
 )

@@ -13,14 +13,14 @@ Select(
                         Comparison {
                             field: "a",
                             op: Equal,
-                            value: Number(
+                            value: UnsignedInteger(
                                 1,
                             ),
                         },
                         Comparison {
                             field: "b",
                             op: Equal,
-                            value: Number(
+                            value: UnsignedInteger(
                                 2,
                             ),
                         },
@@ -29,14 +29,14 @@ Select(
                         Comparison {
                             field: "c",
                             op: Equal,
-                            value: Number(
+                            value: UnsignedInteger(
                                 3,
                             ),
                         },
                         Comparison {
                             field: "d",
                             op: Equal,
-                            value: Number(
+                            value: UnsignedInteger(
                                 4,
                             ),
                         },
@@ -45,7 +45,7 @@ Select(
                 Comparison {
                     field: "e",
                     op: Equal,
-                    value: Number(
+                    value: UnsignedInteger(
                         5,
                     ),
                 },
