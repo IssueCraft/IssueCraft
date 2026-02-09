@@ -409,12 +409,14 @@ impl ExecutionEngine for Database {
                         });
                     }
 
+                    let project_owner = self.get(project)?.owner;
                     if !authorization_provider
                         .check_authorization(
                             &user,
                             &Action::Create,
                             &Resource::Issue,
                             Some(value! ({
+                                "project_owner": (project_owner.to_string()),
                                 "project": (project.to_string())
                             })),
                         )
@@ -456,13 +458,14 @@ impl ExecutionEngine for Database {
             issuecraft_ql::IqlQuery::Update(UpdateStatement { entity, updates }) => match entity {
                 issuecraft_ql::UpdateTarget::User(_) => Err(BackendError::NotSupported),
                 issuecraft_ql::UpdateTarget::Project(id) => {
+                    let owner = self.get(id)?.owner;
                     if !authorization_provider
                         .check_authorization(
                             &user,
                             &Action::Update,
                             &Resource::Project,
                             Some(value! ({
-                                "project": (id.to_string())
+                                "owner": (owner.to_string())
                             })),
                         )
                         .await?
@@ -475,13 +478,15 @@ impl ExecutionEngine for Database {
                     Ok(ExecutionResult::one().build())
                 }
                 issuecraft_ql::UpdateTarget::Issue(id) => {
+                    let project = self.get(id)?.project;
+                    let project_owner = self.get(&project)?.owner;
                     if !authorization_provider
                         .check_authorization(
                             &user,
                             &Action::Update,
                             &Resource::Issue,
                             Some(value! ({
-                                "project": (id.to_string())
+                                "project_owner": (project_owner.to_string())
                             })),
                         )
                         .await?
@@ -494,13 +499,17 @@ impl ExecutionEngine for Database {
                     Ok(ExecutionResult::one().build())
                 }
                 issuecraft_ql::UpdateTarget::Comment(id) => {
+                    let issue = self.get(id)?.issue;
+                    let project = self.get(&issue)?.project;
+                    let project_owner = self.get(&project)?.owner;
                     if !authorization_provider
                         .check_authorization(
                             &user,
                             &issuecraft_core::Action::Update,
                             &issuecraft_core::Resource::Comment,
                             Some(value!({
-                                "owner": (self.get(id)?.author.to_string())
+                                "project_owner": (project_owner.to_string()),
+                                "author": (self.get(id)?.author.to_string())
                             })),
                         )
                         .await?
