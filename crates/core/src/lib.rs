@@ -87,6 +87,7 @@ pub enum Priority {
 
 #[derive(Debug, Clone, Facet)]
 pub struct IssueInfo {
+    pub author: UserId,
     pub title: String,
     pub kind: IssueKind,
     #[facet(skip_serializing_if = Option::is_none)]
@@ -132,12 +133,18 @@ pub enum Resource {
     Comment,
 }
 
-#[derive(Debug, Clone, Facet, PartialEq)]
+#[derive(Debug, Clone, Copy, Facet, PartialEq)]
 #[repr(C)]
 #[facet(transparent)]
 pub enum AuthorizationStatus {
     Authorized,
     Denied,
+}
+
+impl AuthorizationStatus {
+    pub fn is_authorized(&self) -> bool {
+        *self == AuthorizationStatus::Authorized
+    }
 }
 
 #[derive(Debug, Clone, Facet)]
@@ -157,23 +164,6 @@ pub trait AuthorizationProvider {
         resource: &Resource,
         context: Option<FacetValue>,
     ) -> Result<AuthorizationResult, BackendError>;
-}
-
-#[async_trait]
-pub trait UserProvider {
-    async fn get_user(&self, token: &str) -> Result<Option<UserId>, BackendError>;
-}
-
-pub struct SingleUserUserProvider;
-
-#[async_trait]
-impl UserProvider for SingleUserUserProvider {
-    async fn get_user(&self, token: &str) -> Result<Option<UserId>, BackendError> {
-        match token {
-            "<default>" | "default" => Ok(Some(UserId::new("default"))),
-            _ => Ok(None),
-        }
-    }
 }
 
 pub struct SingleUserAuthorizationProvider;
@@ -205,10 +195,10 @@ impl AuthorizationProvider for SingleUserAuthorizationProvider {
 
 #[async_trait]
 pub trait ExecutionEngine {
-    async fn execute<UP: UserProvider + Sync, AP: AuthorizationProvider + Sync>(
+    async fn execute<AP: AuthorizationProvider + Sync>(
         &mut self,
-        user_provider: &UP,
         authorization_provider: &AP,
+        user: UserId,
         query: &IqlQuery,
     ) -> Result<ExecutionResult, BackendError>;
 }

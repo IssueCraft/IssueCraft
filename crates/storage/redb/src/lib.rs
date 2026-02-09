@@ -4,8 +4,8 @@ use async_trait::async_trait;
 use facet::Facet;
 use facet_value::{Value, from_value, value};
 use issuecraft_core::{
-    AuthorizationProvider, BackendError, CommentInfo, EntityId, Entry, ExecutionEngine,
-    ExecutionResult, IssueInfo, IssueStatus, Priority, ProjectInfo, UserInfo, UserProvider,
+    Action, AuthorizationProvider, BackendError, CommentInfo, EntityId, Entry, ExecutionEngine,
+    ExecutionResult, IssueInfo, IssueStatus, Priority, ProjectInfo, Resource, UserInfo,
 };
 use issuecraft_ql::{
     AssignStatement, CloseStatement, CommentId, CommentStatement, DeleteStatement, DeleteTarget,
@@ -321,15 +321,12 @@ fn to_iql_error<E: Display>(err: E) -> BackendError {
 #[async_trait]
 #[allow(clippy::too_many_lines)]
 impl ExecutionEngine for Database {
-    async fn execute<UP: UserProvider + Sync, AP: AuthorizationProvider + Sync>(
+    async fn execute<AP: AuthorizationProvider + Sync>(
         &mut self,
-        user_provider: &UP,
         authorization_provider: &AP,
+        user: UserId,
         query: &IqlQuery,
     ) -> Result<ExecutionResult, BackendError> {
-        // TODO: replace unwrap with proper logic
-        let user = user_provider.get_user("<default>").await?.unwrap();
-
         match query {
             issuecraft_ql::IqlQuery::Select(select_statement) => {
                 let result = match select_statement.from {
@@ -365,8 +362,24 @@ impl ExecutionEngine for Database {
                     }
                     let owner = match owner {
                         Some(owner) => owner.clone(),
-                        None => user,
+                        None => user.clone(),
                     };
+
+                    if !authorization_provider
+                        .check_authorization(
+                            &user,
+                            &Action::Create,
+                            &Resource::Project,
+                            Some(value! ({
+                                "owner": (owner.to_string())
+                            })),
+                        )
+                        .await?
+                        .status
+                        .is_authorized()
+                    {
+                        return Err(BackendError::PermissionDenied(user.to_string()));
+                    }
 
                     if !self.exists(&owner)? {
                         return Err(BackendError::UserNotFound {
@@ -395,9 +408,26 @@ impl ExecutionEngine for Database {
                             id: project.to_string(),
                         });
                     }
+
+                    if !authorization_provider
+                        .check_authorization(
+                            &user,
+                            &Action::Create,
+                            &Resource::Issue,
+                            Some(value! ({
+                                "project": (project.to_string())
+                            })),
+                        )
+                        .await?
+                        .status
+                        .is_authorized()
+                    {
+                        return Err(BackendError::PermissionDenied(user.to_string()));
+                    }
+
                     let assignee = match assignee {
                         Some(assignee) => assignee.clone(),
-                        None => user,
+                        None => user.clone(),
                     };
                     let issue_number = self.get_next_issue_id(project)?;
                     let issue_info = IssueInfo {
@@ -406,6 +436,7 @@ impl ExecutionEngine for Database {
                         description: description.clone(),
                         status: IssueStatus::Open,
                         project: project.clone(),
+                        author: user,
                         assignee,
                         priority: priority.clone().map(|p| match p {
                             issuecraft_ql::Priority::Critical => Priority::Critical,
@@ -425,39 +456,60 @@ impl ExecutionEngine for Database {
             issuecraft_ql::IqlQuery::Update(UpdateStatement { entity, updates }) => match entity {
                 issuecraft_ql::UpdateTarget::User(_) => Err(BackendError::NotSupported),
                 issuecraft_ql::UpdateTarget::Project(id) => {
+                    if !authorization_provider
+                        .check_authorization(
+                            &user,
+                            &Action::Update,
+                            &Resource::Project,
+                            Some(value! ({
+                                "project": (id.to_string())
+                            })),
+                        )
+                        .await?
+                        .status
+                        .is_authorized()
+                    {
+                        return Err(BackendError::PermissionDenied(user.to_string()));
+                    }
                     self.update(id, updates)?;
                     Ok(ExecutionResult::one().build())
                 }
                 issuecraft_ql::UpdateTarget::Issue(id) => {
+                    if !authorization_provider
+                        .check_authorization(
+                            &user,
+                            &Action::Update,
+                            &Resource::Issue,
+                            Some(value! ({
+                                "project": (id.to_string())
+                            })),
+                        )
+                        .await?
+                        .status
+                        .is_authorized()
+                    {
+                        return Err(BackendError::PermissionDenied(user.to_string()));
+                    }
                     self.update(id, updates)?;
                     Ok(ExecutionResult::one().build())
                 }
                 issuecraft_ql::UpdateTarget::Comment(id) => {
-                    let author: Value = self.get(id)?.author.into();
-                    let context = value!({
-                        "owner": author
-                    });
-                    if authorization_provider
+                    if !authorization_provider
                         .check_authorization(
                             &user,
                             &issuecraft_core::Action::Update,
                             &issuecraft_core::Resource::Comment,
-                            Some(context),
+                            Some(value!({
+                                "owner": (self.get(id)?.author.to_string())
+                            })),
                         )
                         .await?
                         .status
-                        != issuecraft_core::AuthorizationStatus::Authorized
+                        .is_authorized()
                     {
-                        return Err(BackendError::PermissionDenied(
-                            "User is not authorized to edit comments".to_string(),
-                        ));
+                        return Err(BackendError::PermissionDenied(user.to_string()));
                     }
 
-                    if self.get(id)?.author != user {
-                        return Err(BackendError::PermissionDenied(
-                            "Cannot edit comments authored by other users".to_string(),
-                        ));
-                    }
                     self.update(id, updates)?;
                     Ok(ExecutionResult::one().build())
                 }
@@ -466,12 +518,45 @@ impl ExecutionEngine for Database {
                 let mut result = ExecutionResult::zero().build();
                 match entity {
                     DeleteTarget::User(_) => return Err(BackendError::NotSupported),
-                    DeleteTarget::Project(project_id) => {
-                        self.delete_project(project_id, &mut result)?;
+                    DeleteTarget::Project(id) => {
+                        if !authorization_provider
+                            .check_authorization(
+                                &user,
+                                &Action::Delete,
+                                &Resource::Project,
+                                Some(value! ({
+                                    "owner": (self.get(id)?.owner.to_string())
+                                })),
+                            )
+                            .await?
+                            .status
+                            .is_authorized()
+                        {
+                            return Err(BackendError::PermissionDenied(user.to_string()));
+                        }
+                        self.delete_project(id, &mut result)?;
                     }
-                    DeleteTarget::Issue(issue_id) => self.delete_issue(issue_id, &mut result)?,
-                    DeleteTarget::Comment(comment_id) => {
-                        self.delete_comment(comment_id, &mut result)?;
+                    DeleteTarget::Issue(id) => {
+                        if !authorization_provider
+                            .check_authorization(
+                                &user,
+                                &Action::Delete,
+                                &Resource::Project,
+                                Some(value! ({
+                                    "author": (self.get(id)?.author.to_string()),
+                                    "project_owner": (self.get(&self.get(id)?.project)?.owner.to_string())
+                                })),
+                            )
+                            .await?
+                            .status
+                            .is_authorized()
+                        {
+                            return Err(BackendError::PermissionDenied(user.to_string()));
+                        }
+                        self.delete_issue(id, &mut result)?;
+                    }
+                    DeleteTarget::Comment(id) => {
+                        self.delete_comment(id, &mut result)?;
                     }
                 }
                 Ok(result)

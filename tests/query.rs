@@ -2,16 +2,12 @@ use std::fmt::Debug;
 
 use anyhow::Result;
 use cucumber::{World, given, then, when};
-use issuecraft_core::{
-    Entry, ExecutionEngine, ExecutionResult, SingleUserAuthorizationProvider,
-    SingleUserUserProvider,
-};
+use issuecraft_core::{Entry, ExecutionEngine, ExecutionResult, SingleUserAuthorizationProvider};
 use issuecraft_ql::*;
 use issuecraft_redb::{Database, DatabaseType};
 
 #[derive(World)]
 pub struct IssuecraftWorld {
-    pub user_provider: Option<SingleUserUserProvider>,
     pub authorization_provider: Option<SingleUserAuthorizationProvider>,
     pub engine: Option<Database>,
 }
@@ -30,8 +26,8 @@ impl IssuecraftWorld {
             .as_mut()
             .unwrap()
             .execute(
-                self.user_provider.as_ref().unwrap(),
                 self.authorization_provider.as_ref().unwrap(),
+                UserId::new("default"),
                 &query,
             )
             .await?)
@@ -41,7 +37,6 @@ impl IssuecraftWorld {
 impl Default for IssuecraftWorld {
     fn default() -> Self {
         Self {
-            user_provider: None,
             authorization_provider: None,
             engine: None,
         }
@@ -52,11 +47,6 @@ impl Default for IssuecraftWorld {
 fn fresh_db(world: &mut IssuecraftWorld) -> Result<()> {
     world.engine = Some(Database::new(DatabaseType::InMemory)?);
     Ok(())
-}
-
-#[given("a single user provider")]
-fn single_user_provider(world: &mut IssuecraftWorld) {
-    world.user_provider = Some(SingleUserUserProvider);
 }
 
 #[given("a single user authorization provider")]

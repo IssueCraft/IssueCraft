@@ -2,7 +2,6 @@ Feature: Query feature
 
   Background:
     Given a fresh database
-    And a single user provider
     And a single user authorization provider
 
   Scenario: A fresh database always has a default user
